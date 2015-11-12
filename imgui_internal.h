@@ -522,6 +522,7 @@ struct IMGUI_API ImGuiDrawContext
     ImVector<bool>          ButtonRepeatStack;
     ImVector<ImGuiGroupData>GroupStack;
     ImGuiColorEditMode      ColorEditMode;
+    bool                    ColorEditUsePicker;
     int                     StackSizesBackup[6];    // Store size of various stacks for asserting
 
     float                   ColumnsStartX;          // Indentation / start position from left of window (increased by TreePush/TreePop, etc.)

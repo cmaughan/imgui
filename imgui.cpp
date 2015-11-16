@@ -8570,7 +8570,6 @@ bool ImGui::ColorPickerWindow(const char* label, bool *opened, float col[4])
     const int smallWidth = 20;
 
     ImU32 black = ColorConvertFloat4ToU32(ImVec4(0, 0, 0, 1));
-    ImU32 white = ColorConvertFloat4ToU32(ImVec4(1, 1, 1, 1));
     static float hue, sat, val;
 
     if (*opened == false)
@@ -8645,7 +8644,7 @@ bool ImGui::ColorPickerWindow(const char* label, bool *opened, float col[4])
             ImRect bb(window->Pos, window->Pos + window->Size);
             bool hovered, held;
 
-            bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+            ButtonBehavior(bb, id, &hovered, &held);
             if (held)
             {
                 ImVec2 pos = g.IO.MousePos - window->Pos;
@@ -8688,7 +8687,7 @@ bool ImGui::ColorPickerWindow(const char* label, bool *opened, float col[4])
             bool hovered, held;
             const ImGuiID id = window->GetID("Tint");
             ImRect bb(window->Pos, window->Pos + window->Size);
-            bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+            ButtonBehavior(bb, id, &hovered, &held);
             if (held)
             {
 
@@ -8744,7 +8743,6 @@ bool ImGui::ColorPicker(const char* label, float col[4])
     ImVec4 color(col[0], col[1], col[2], col[3]);
     ImVec4 colorAlpha(col[3], col[3], col[3], 1);
 
-    ImGuiState& g = *GImGui;
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems)
         return false;
@@ -8765,7 +8763,7 @@ bool ImGui::ColorPicker(const char* label, float col[4])
     */
 
     ImGui::SameLine();
-    ImGui::Text(label);
+    ImGui::Text(label, 0);
 
     if (clicked) {
         GColorPickerColor = color;

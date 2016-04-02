@@ -1021,33 +1021,28 @@ struct DockContext
 
     void save(std::ostringstream& file)
     {
-
-        file << "docks = {\n";
         for (int i = 0; i < m_docks.size(); ++i)
         {
             Dock& dock = *m_docks[i];
-            file << "dock" << (uint64_t)&dock << " = {\n";
-            file << "index = " << i << ",\n";
-            file << "label = \"" << dock.label << "\",\n";
-            file << "x = " << (int)dock.pos.x << ",\n";
-            file << "y = " << (int)dock.pos.y << ",\n";
-            file << "location = \"" << dock.location << "\",\n";
-            file << "size_x = " << (int)dock.size.x << ",\n";
-            file << "size_y = " << (int)dock.size.y << ",\n";
-            file << "status = " << (int)dock.status << ",\n";
-            file << "active = " << (int)dock.active << ",\n";
-            file << "opened = " << (int)dock.opened << ",\n";
-            file << "prev = " << (int)getDockIndex(dock.prev_tab) << ",\n";
-            file << "next = " << (int)getDockIndex(dock.next_tab) << ",\n";
-            file << "child0 = " << (int)getDockIndex(dock.children[0]) << ",\n";
-            file << "child1 = " << (int)getDockIndex(dock.children[1]) << ",\n";
-            file << "parent = " << (int)getDockIndex(dock.parent) << "\n";
+            file << "#dock : " << (uint64_t)&dock << std::endl;
+            file << "index : " << i << std::endl;
+            file << "label : " << dock.label << std::endl;
+            file << "x : " << (int)dock.pos.x << std::endl;
+            file << "y : " << (int)dock.pos.y << std::endl;
+            file << "location : " << (const char*)&dock.location[0] << std::endl;
+            file << "size_x : " << (int)dock.size.x << std::endl;
+            file << "size_y : " << (int)dock.size.y << std::endl;
+            file << "status : " << (int)dock.status << std::endl;
+            file << "active : " << (int)dock.active << std::endl;
+            file << "opened : " << (int)dock.opened << std::endl;
+            file << "prev : " << (int)getDockIndex(dock.prev_tab) << std::endl;
+            file << "next : " << (int)getDockIndex(dock.next_tab) << std::endl;
+            file << "child0 : " << (int)getDockIndex(dock.children[0]) << std::endl;
+            file << "child1 : " << (int)getDockIndex(dock.children[1]) << std::endl;
+            file << "parent : " << (int)getDockIndex(dock.parent) << std::endl;
             if (i < m_docks.size() - 1)
-                file << "},\n";
-            else
-                file << "}\n";
+                file << std::endl;
         }
-        file << "}\n";
     }
 
 

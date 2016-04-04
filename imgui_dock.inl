@@ -1062,7 +1062,6 @@ struct DockContext
             for (auto& tok : tokens)
             {
                 tok = MShared::Trim(tok);
-                MShared::MToLowerInPlace(tok);
             }
 
             if (tokens[0].empty() ||
@@ -1102,8 +1101,8 @@ struct DockContext
 
             if (key == "label")
             {
-                pDock->label = strdup(tokens[1].c_str());
-                pDock->id = ImHash((const void*)&tokens[1], 0);
+                pDock->label = ImStrdup(tokens[1].c_str());
+                pDock->id = ImHash(pDock->label, 0);
             }
             else if (key == "x")
             {

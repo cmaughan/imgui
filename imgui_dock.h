@@ -17,7 +17,7 @@ IMGUI_API bool BeginDock(const char* label, bool* opened = nullptr, ImGuiWindowF
 IMGUI_API void EndDock();
 IMGUI_API void SetDockActive();
 IMGUI_API void SaveDock(std::ostringstream& file);
-//IMGUI_API void LoadDock(lua_State* L);
+IMGUI_API void LoadDock(std::istream& file);
 
 
 } // namespace ImGui

@@ -1031,8 +1031,8 @@ struct DockContext
             file << "size_x : " << (int)dock.size.x << std::endl;
             file << "size_y : " << (int)dock.size.y << std::endl;
             file << "status : " << (int)dock.status << std::endl;
-            file << "active : " << (int)dock.active << std::endl;
-            file << "opened : " << (int)dock.opened << std::endl;
+            file << "active : " << (dock.active ? 1 : 0) << std::endl;
+            file << "opened : " << (dock.opened ? 1 : 0) << std::endl;
             file << "prev : " << (int)getDockIndex(dock.prev_tab) << std::endl;
             file << "next : " << (int)getDockIndex(dock.next_tab) << std::endl;
             file << "child0 : " << (int)getDockIndex(dock.children[0]) << std::endl;
@@ -1130,13 +1130,13 @@ struct DockContext
             }
             else if (key == "active")
             {
-                pDock->active = std::stoi(tokens[1]);
+                pDock->active = (std::stoi(tokens[1]) != 0) ? true : false;
             }
             else if (key == "opened")
             {
-                pDock->opened = std::stoi(tokens[1]);
+                pDock->opened = (std::stoi(tokens[1]) != 0) ? true : false;
             }
-            else if (key == "previous")
+            else if (key == "prev")
             {
                 pDock->prev_tab = getDockByIndex(std::stoi(tokens[1]));
             }
@@ -1155,6 +1155,10 @@ struct DockContext
             else if (key == "parent")
             {
                 pDock->parent = getDockByIndex(std::stoi(tokens[1]));
+            }
+            else if (key != "#dock")
+            {
+                assert(!"Unkown key?");
             }
         }
     }

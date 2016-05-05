@@ -1,6 +1,7 @@
-//
-//  imgui_impl_ios.cpp
-//  imguiex
+// ImGui iOS+OpenGL+Synergy binding
+// In this binding, ImTextureID is used to store an OpenGL 'GLuint' texture identifier. Read the FAQ about ImTextureID in imgui.cpp.
+// Providing a standalone iOS application with Synergy integration makes this sample more verbose than others. It also hasn't been tested as much.
+// Refer to other examples to get an easier understanding of how to integrate ImGui into your existing application.
 
 #import <OpenGLES/ES3/gl.h>
 #import <OpenGLES/ES3/glext.h>
@@ -692,12 +693,15 @@ static void ImGui_ImplIOS_RenderDrawLists (ImDrawData *draw_data)
 
 void ImGui_ImplIOS_CreateFontsTexture()
 {
+    // Build texture atlas
     ImGuiIO& io = ImGui::GetIO();
-    
     unsigned char* pixels;
     int width, height;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);   // Load as RGBA 32-bits for OpenGL3 demo because it is more likely to be compatible with user's existing shader.
     
+    // Upload texture to graphics system
+    GLint last_texture;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
     glGenTextures(1, &g_FontTexture);
     glBindTexture(GL_TEXTURE_2D, g_FontTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -706,10 +710,9 @@ void ImGui_ImplIOS_CreateFontsTexture()
     
     // Store our identifier
     io.Fonts->TexID = (void *)(intptr_t)g_FontTexture;
-    
-    // Cleanup (don't clear the input data if you want to append new fonts later)
-    io.Fonts->ClearInputData();
-    io.Fonts->ClearTexData();
+
+    // Restore state
+    glBindTexture(GL_TEXTURE_2D, last_texture);
 }
 
 bool ImGui_ImplIOS_CreateDeviceObjects()
@@ -766,7 +769,6 @@ bool ImGui_ImplIOS_CreateDeviceObjects()
         free(log);
     }
 #endif
-    
     
     glAttachShader(g_ShaderHandle, g_VertHandle);
     glAttachShader(g_ShaderHandle, g_FragHandle);

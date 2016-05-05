@@ -1,16 +1,19 @@
 // ImGui Marmalade binding with IwGx
+// In this binding, ImTextureID is used to store a 'CIwTexture*' texture identifier. Read the FAQ about ImTextureID in imgui.cpp.
+
+// You can copy and use unmodified imgui_impl_* files in your project. See main.cpp for an example of using this.
+// If you use this binding you'll need to call 4 functions: ImGui_ImplXXXX_Init(), ImGui_ImplXXXX_NewFrame(), ImGui::Render() and ImGui_ImplXXXX_Shutdown().
+// If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
+// https://github.com/ocornut/imgui
+
 // Copyright (C) 2015 by Giovanni Zito
 // This file is part of ImGui
-// You can copy and use unmodified imgui_impl_* files in your project. 
-// If you use this binding you'll need to call 4 functions: ImGui_ImplXXXX_Init(), ImGui_ImplXXXX_NewFrame(), ImGui::Render() and ImGui_ImplXXXX_Shutdown(). 
-// See main.cpp for an example of using this.
-// https://github.com/ocornut/imgui
 
 #include <imgui.h>
 #include "imgui_impl_marmalade.h"
 
 #include <s3eClipboard.h>
-#include <s3ePointer.h> 
+#include <s3ePointer.h>
 #include <s3eKeyboard.h>
 #include <IwTexture.h>
 #include <IwGx.h>
@@ -44,7 +47,7 @@ void ImGui_Marmalade_RenderDrawLists(ImDrawData* draw_data)
         CIwFVec2* pUVStream = IW_GX_ALLOC(CIwFVec2, nVert);
         CIwColour* pColStream = IW_GX_ALLOC(CIwColour, nVert);
 
-        for( int i=0; i < nVert; i++ ) 
+        for( int i=0; i < nVert; i++ )
         {
             // TODO: optimize multiplication on gpu using vertex shader
             pVertStream[i].x = cmd_list->VtxBuffer[i].pos.x * g_scale.x;
@@ -89,12 +92,12 @@ void ImGui_Marmalade_RenderDrawLists(ImDrawData* draw_data)
 
 static const char* ImGui_Marmalade_GetClipboardText()
 {
-    if (s3eClipboardAvailable()) 
+    if (s3eClipboardAvailable())
     {
         int size = s3eClipboardGetText(NULL, 0);
-        if (size > 0) 
+        if (size > 0)
         {
-            if (g_ClipboardText) 
+            if (g_ClipboardText)
             {
                 delete[] g_ClipboardText;
                 g_ClipboardText = NULL;
@@ -121,7 +124,7 @@ int32 ImGui_Marmalade_PointerButtonEventCallback(void* SystemData, void* pUserDa
     // S3E_POINTER_BUTTON_SELECT
     s3ePointerEvent* pEvent = (s3ePointerEvent*)SystemData;
 
-    if (pEvent->m_Pressed == 1) 
+    if (pEvent->m_Pressed == 1)
     {
         if (pEvent->m_Button == S3E_POINTER_BUTTON_LEFTMOUSE)
             g_MousePressed[0] = true;
@@ -146,7 +149,7 @@ int32 ImGui_Marmalade_KeyCallback(void* SystemData, void* userData)
         io.KeysDown[e->m_Key] = true;
     if (e->m_Pressed == 0)
         io.KeysDown[e->m_Key] = false;
-    
+
     io.KeyCtrl = s3eKeyboardGetState(s3eKeyLeftControl) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightControl) == S3E_KEY_STATE_DOWN;
     io.KeyShift = s3eKeyboardGetState(s3eKeyLeftShift) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightShift) == S3E_KEY_STATE_DOWN;
     io.KeyAlt = s3eKeyboardGetState(s3eKeyLeftAlt) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightAlt) == S3E_KEY_STATE_DOWN;
@@ -166,14 +169,13 @@ int32 ImGui_Marmalade_CharCallback(void* SystemData, void* userData)
 
 bool ImGui_Marmalade_CreateDeviceObjects()
 {
-    ImGuiIO& io = ImGui::GetIO();
-
     // Build texture atlas
+    ImGuiIO& io = ImGui::GetIO();
     unsigned char* pixels;
     int width, height;
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-    // Create texture
+    // Upload texture to graphics system
     g_FontTexture = new CIwTexture();
     g_FontTexture->SetModifiable(true);
     CIwImage& image = g_FontTexture->GetImage();
@@ -186,19 +188,15 @@ bool ImGui_Marmalade_CreateDeviceObjects()
     g_FontTexture->SetFiltering(false);
     g_FontTexture->Upload();
 
-    // Store the pointer
+    // Store our identifier
     io.Fonts->TexID = (void *)g_FontTexture;
-
-    // Cleanup (don't clear the input data if you want to append new fonts later)
-    io.Fonts->ClearInputData();
-    io.Fonts->ClearTexData();
 
     return true;
 }
 
 void    ImGui_Marmalade_InvalidateDeviceObjects()
 {
-    if (g_ClipboardText) 
+    if (g_ClipboardText)
     {
         delete[] g_ClipboardText;
         g_ClipboardText = NULL;
@@ -280,8 +278,8 @@ void ImGui_Marmalade_NewFrame()
     mouse_x = s3ePointerGetX();
     mouse_y = s3ePointerGetY();
     io.MousePos = ImVec2((float)mouse_x/g_scale.x, (float)mouse_y/g_scale.y);   // Mouse position in screen coordinates (set to -1,-1 if no mouse / on another screen, etc.)
-   
-    for (int i = 0; i < 3; i++) 
+
+    for (int i = 0; i < 3; i++)
     {
         io.MouseDown[i] = g_MousePressed[i] || s3ePointerGetState((s3ePointerButton)i) != S3E_POINTER_STATE_UP;    // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
         g_MousePressed[i] = false;
@@ -298,15 +296,15 @@ void ImGui_Marmalade_NewFrame()
 
      // Show/hide OSD keyboard
     if (io.WantTextInput)
-    {    
+    {
         // Some text input widget is active?
-        if (!g_osdKeyboardEnabled) 
+        if (!g_osdKeyboardEnabled)
         {
             g_osdKeyboardEnabled = true;
             s3eKeyboardSetInt(S3E_KEYBOARD_GET_CHAR, 1);    // show OSD keyboard
         }
     }
-    else 
+    else
     {
         // No text input widget is active
         if (g_osdKeyboardEnabled)

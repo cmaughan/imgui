@@ -1,10 +1,12 @@
 // ImGui - standalone example application for DirectX 9
+// If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 
 #include <imgui.h>
 #include "imgui_impl_dx9.h"
 #include <d3dx9.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
+#include <tchar.h>
 
 // Data
 static LPDIRECT3DDEVICE9        g_pd3dDevice = NULL;
@@ -44,15 +46,15 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 int main(int, char**)
 {
     // Create application window
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, LoadCursor(NULL, IDC_ARROW), NULL, NULL, L"ImGui Example", NULL };
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, LoadCursor(NULL, IDC_ARROW), NULL, NULL, _T("ImGui Example"), NULL };
     RegisterClassEx(&wc);
-    HWND hwnd = CreateWindow(L"ImGui Example", L"ImGui DirectX9 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = CreateWindow(_T("ImGui Example"), _T("ImGui DirectX9 Example"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     LPDIRECT3D9 pD3D;
     if ((pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == NULL)
     {
-        UnregisterClass(L"ImGui Example", wc.hInstance);
+        UnregisterClass(_T("ImGui Example"), wc.hInstance);
         return 0;
     }
     ZeroMemory(&g_d3dpp, sizeof(g_d3dpp));
@@ -67,7 +69,7 @@ int main(int, char**)
     if (pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_HARDWARE_VERTEXPROCESSING, &g_d3dpp, &g_pd3dDevice) < 0)
     {
         pD3D->Release();
-        UnregisterClass(L"ImGui Example", wc.hInstance);
+        UnregisterClass(_T("ImGui Example"), wc.hInstance);
         return 0;
     }
 
@@ -75,7 +77,7 @@ int main(int, char**)
     ImGui_ImplDX9_Init(hwnd, g_pd3dDevice);
 
     // Load Fonts
-    // (see extra_fonts/README.txt for more details)
+    // (there is a default font, this is only if you want to change it. see extra_fonts/README.txt for more details)
     //ImGuiIO& io = ImGui::GetIO();
     //io.Fonts->AddFontDefault();
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/Cousine-Regular.ttf", 15.0f);
@@ -83,12 +85,6 @@ int main(int, char**)
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/ProggyClean.ttf", 13.0f);
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-
-    // Merge glyphs from multiple fonts into one (e.g. combine default font with another with Chinese glyphs, or add icons)
-    //static const ImWchar icons_ranges[] = { 0xf000, 0xf3ff, 0 }; // will not be copied by AddFont* so keep in scope.
-    //ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/DroidSans.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/fontawesome-webfont.ttf", 18.0f, &icons_config, icons_ranges);
 
     bool show_test_window = true;
     bool show_another_window = false;
@@ -154,7 +150,7 @@ int main(int, char**)
     ImGui_ImplDX9_Shutdown();
     if (g_pd3dDevice) g_pd3dDevice->Release();
     if (pD3D) pD3D->Release();
-    UnregisterClass(L"ImGui Example", wc.hInstance);
+    UnregisterClass(_T("ImGui Example"), wc.hInstance);
 
     return 0;
 }

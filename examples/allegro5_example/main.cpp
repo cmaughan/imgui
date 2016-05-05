@@ -1,4 +1,5 @@
 // ImGui - standalone example application for Allegro 5
+// If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 
 #include <stdint.h>
 #include <allegro5/allegro.h>
@@ -8,7 +9,7 @@
 
 int main(int, char**)
 {
-    // Setup Allegro 
+    // Setup Allegro
     al_init();
     al_install_keyboard();
     al_install_mouse();
@@ -25,7 +26,7 @@ int main(int, char**)
     ImGui_ImplA5_Init(display);
 
     // Load Fonts
-    // (see extra_fonts/README.txt for more details)
+    // (there is a default font, this is only if you want to change it. see extra_fonts/README.txt for more details)
     //ImGuiIO& io = ImGui::GetIO();
     //io.Fonts->AddFontDefault();
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/Cousine-Regular.ttf", 15.0f);
@@ -34,19 +35,13 @@ int main(int, char**)
     //io.Fonts->AddFontFromFileTTF("../../extra_fonts/ProggyTiny.ttf", 10.0f);
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 
-    // Merge glyphs from multiple fonts into one (e.g. combine default font with another with Chinese glyphs, or add icons)
-    //static const ImWchar icons_ranges[] = { 0xf000, 0xf3ff, 0 }; // will not be copied by AddFont* so keep in scope.
-    //ImFontConfig icons_config; icons_config.MergeMode = true; icons_config.PixelSnapH = true;
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/DroidSans.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../extra_fonts/fontawesome-webfont.ttf", 18.0f, &icons_config, icons_ranges);
-
     bool show_test_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImColor(114, 144, 154);
 
     // Main loop
     bool running = true;
-    while (running) 
+    while (running)
     {
         ALLEGRO_EVENT ev;
         while (al_get_next_event(queue, &ev))
@@ -75,7 +70,7 @@ int main(int, char**)
         }
 
         // 2. Show another simple window, this time using an explicit Begin/End pair
-        if (show_another_window) 
+        if (show_another_window)
         {
             ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiSetCond_FirstUseEver);
             ImGui::Begin("Another Window", &show_another_window);
@@ -84,7 +79,7 @@ int main(int, char**)
         }
 
         // 3. Show the ImGui test window. Most of the sample code is in ImGui::ShowTestWindow()
-        if (show_test_window) 
+        if (show_test_window)
         {
             ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
             ImGui::ShowTestWindow(&show_test_window);

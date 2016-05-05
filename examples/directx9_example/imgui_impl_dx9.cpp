@@ -1,7 +1,9 @@
 // ImGui Win32 + DirectX9 binding
-// You can copy and use unmodified imgui_impl_* files in your project. 
+// In this binding, ImTextureID is used to store a 'LPDIRECT3DTEXTURE9' texture identifier. Read the FAQ about ImTextureID in imgui.cpp.
+
+// You can copy and use unmodified imgui_impl_* files in your project. See main.cpp for an example of using this.
 // If you use this binding you'll need to call 4 functions: ImGui_ImplXXXX_Init(), ImGui_ImplXXXX_NewFrame(), ImGui::Render() and ImGui_ImplXXXX_Shutdown().
-// See main.cpp for an example of using this.
+// If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 // https://github.com/ocornut/imgui
 
 #include <imgui.h>
@@ -94,8 +96,9 @@ void ImGui_ImplDX9_RenderDrawLists(ImDrawData* draw_data)
     g_pd3dDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
     g_pd3dDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
     g_pd3dDevice->SetRenderState( D3DRS_SCISSORTESTENABLE, true );
-    g_pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 );
-    g_pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG1, D3DTA_DIFFUSE );
+    g_pd3dDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_MODULATE );
+    g_pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG1, D3DTA_TEXTURE );
+    g_pd3dDevice->SetTextureStageState( 0, D3DTSS_COLORARG2, D3DTA_DIFFUSE );
     g_pd3dDevice->SetTextureStageState( 0, D3DTSS_ALPHAOP, D3DTOP_MODULATE );
     g_pd3dDevice->SetTextureStageState( 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE );
     g_pd3dDevice->SetTextureStageState( 0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE );
@@ -145,26 +148,26 @@ IMGUI_API LRESULT ImGui_ImplDX9_WndProcHandler(HWND, UINT msg, WPARAM wParam, LP
         io.MouseDown[0] = true;
         return true;
     case WM_LBUTTONUP:
-        io.MouseDown[0] = false; 
+        io.MouseDown[0] = false;
         return true;
     case WM_RBUTTONDOWN:
-        io.MouseDown[1] = true; 
+        io.MouseDown[1] = true;
         return true;
     case WM_RBUTTONUP:
-        io.MouseDown[1] = false; 
+        io.MouseDown[1] = false;
         return true;
     case WM_MBUTTONDOWN:
-        io.MouseDown[2] = true; 
+        io.MouseDown[2] = true;
         return true;
     case WM_MBUTTONUP:
-        io.MouseDown[2] = false; 
+        io.MouseDown[2] = false;
         return true;
     case WM_MOUSEWHEEL:
         io.MouseWheel += GET_WHEEL_DELTA_WPARAM(wParam) > 0 ? +1.0f : -1.0f;
         return true;
     case WM_MOUSEMOVE:
         io.MousePos.x = (signed short)(lParam);
-        io.MousePos.y = (signed short)(lParam >> 16); 
+        io.MousePos.y = (signed short)(lParam >> 16);
         return true;
     case WM_KEYDOWN:
         if (wParam < 256)
@@ -188,7 +191,7 @@ bool    ImGui_ImplDX9_Init(void* hwnd, IDirect3DDevice9* device)
     g_hWnd = (HWND)hwnd;
     g_pd3dDevice = device;
 
-    if (!QueryPerformanceFrequency((LARGE_INTEGER *)&g_TicksPerSecond)) 
+    if (!QueryPerformanceFrequency((LARGE_INTEGER *)&g_TicksPerSecond))
         return false;
     if (!QueryPerformanceCounter((LARGE_INTEGER *)&g_Time))
         return false;
@@ -230,19 +233,18 @@ void ImGui_ImplDX9_Shutdown()
 
 static bool ImGui_ImplDX9_CreateFontsTexture()
 {
+    // Build texture atlas
     ImGuiIO& io = ImGui::GetIO();
-
-    // Build
     unsigned char* pixels;
     int width, height, bytes_per_pixel;
-    io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height, &bytes_per_pixel);
+    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
 
-    // Create DX9 texture
+    // Upload texture to graphics system
     g_FontTexture = NULL;
-    if (D3DXCreateTexture(g_pd3dDevice, width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8, D3DPOOL_DEFAULT, &g_FontTexture) < 0)
+    if (D3DXCreateTexture(g_pd3dDevice, width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8B8G8R8, D3DPOOL_DEFAULT, &g_FontTexture) < 0)
         return false;
     D3DLOCKED_RECT tex_locked_rect;
-    if (g_FontTexture->LockRect(0, &tex_locked_rect, NULL, 0) != D3D_OK) 
+    if (g_FontTexture->LockRect(0, &tex_locked_rect, NULL, 0) != D3D_OK)
         return false;
     for (int y = 0; y < height; y++)
         memcpy((unsigned char *)tex_locked_rect.pBits + tex_locked_rect.Pitch * y, pixels + (width * bytes_per_pixel) * y, (width * bytes_per_pixel));
@@ -251,9 +253,6 @@ static bool ImGui_ImplDX9_CreateFontsTexture()
     // Store our identifier
     io.Fonts->TexID = (void *)g_FontTexture;
 
-    // Cleanup (don't clear the input data if you want to append new fonts later)
-    io.Fonts->ClearInputData();
-    io.Fonts->ClearTexData();
     return true;
 }
 
@@ -302,7 +301,7 @@ void ImGui_ImplDX9_NewFrame()
 
     // Setup time step
     INT64 current_time;
-    QueryPerformanceCounter((LARGE_INTEGER *)&current_time); 
+    QueryPerformanceCounter((LARGE_INTEGER *)&current_time);
     io.DeltaTime = (float)(current_time - g_Time) / g_TicksPerSecond;
     g_Time = current_time;
 

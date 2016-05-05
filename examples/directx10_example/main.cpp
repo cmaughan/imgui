@@ -1,19 +1,19 @@
-// ImGui - standalone example application for DirectX 11
+// ImGui - standalone example application for DirectX 10
 // If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 
 #include <imgui.h>
-#include "imgui_impl_dx11.h"
-#include <d3d11.h>
+#include "imgui_impl_dx10.h"
+#include <d3d10_1.h>
+#include <d3d10.h>
 #include <d3dcompiler.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 #include <tchar.h>
 
 // Data
-static ID3D11Device*            g_pd3dDevice = NULL;
-static ID3D11DeviceContext*     g_pd3dDeviceContext = NULL;
+static ID3D10Device*            g_pd3dDevice = NULL;
 static IDXGISwapChain*          g_pSwapChain = NULL;
-static ID3D11RenderTargetView*  g_mainRenderTargetView = NULL;
+static ID3D10RenderTargetView*  g_mainRenderTargetView = NULL;
 
 void CreateRenderTarget()
 {
@@ -21,14 +21,14 @@ void CreateRenderTarget()
     g_pSwapChain->GetDesc(&sd);
 
     // Create the render target
-    ID3D11Texture2D* pBackBuffer;
-    D3D11_RENDER_TARGET_VIEW_DESC render_target_view_desc;
+    ID3D10Texture2D* pBackBuffer;
+    D3D10_RENDER_TARGET_VIEW_DESC render_target_view_desc;
     ZeroMemory(&render_target_view_desc, sizeof(render_target_view_desc));
     render_target_view_desc.Format = sd.BufferDesc.Format;
-    render_target_view_desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-    g_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+    render_target_view_desc.ViewDimension = D3D10_RTV_DIMENSION_TEXTURE2D;
+    g_pSwapChain->GetBuffer(0, __uuidof(ID3D10Texture2D), (LPVOID*)&pBackBuffer);
     g_pd3dDevice->CreateRenderTargetView(pBackBuffer, &render_target_view_desc, &g_mainRenderTargetView);
-    g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
+    g_pd3dDevice->OMSetRenderTargets(1, &g_mainRenderTargetView, NULL);
     pBackBuffer->Release();
 }
 
@@ -59,18 +59,16 @@ HRESULT CreateDeviceD3D(HWND hWnd)
     }
 
     UINT createDeviceFlags = 0;
-    //createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-    D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[1] = { D3D_FEATURE_LEVEL_11_0, };
-    if (D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, featureLevelArray, 1, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext) != S_OK)
+    //createDeviceFlags |= D3D10_CREATE_DEVICE_DEBUG;
+    if (D3D10CreateDeviceAndSwapChain(NULL, D3D10_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, D3D10_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice) != S_OK)
         return E_FAIL;
 
     // Setup rasterizer
     {
-        D3D11_RASTERIZER_DESC RSDesc;
-        memset(&RSDesc, 0, sizeof(D3D11_RASTERIZER_DESC));
-        RSDesc.FillMode = D3D11_FILL_SOLID;
-        RSDesc.CullMode = D3D11_CULL_NONE;
+        D3D10_RASTERIZER_DESC RSDesc;
+        memset(&RSDesc, 0, sizeof(D3D10_RASTERIZER_DESC));
+        RSDesc.FillMode = D3D10_FILL_SOLID;
+        RSDesc.CullMode = D3D10_CULL_NONE;
         RSDesc.FrontCounterClockwise = FALSE;
         RSDesc.DepthBias = 0;
         RSDesc.SlopeScaledDepthBias = 0.0f;
@@ -80,9 +78,9 @@ HRESULT CreateDeviceD3D(HWND hWnd)
         RSDesc.AntialiasedLineEnable = FALSE;
         RSDesc.MultisampleEnable = (sd.SampleDesc.Count > 1) ? TRUE : FALSE;
 
-        ID3D11RasterizerState* pRState = NULL;
+        ID3D10RasterizerState* pRState = NULL;
         g_pd3dDevice->CreateRasterizerState(&RSDesc, &pRState);
-        g_pd3dDeviceContext->RSSetState(pRState);
+        g_pd3dDevice->RSSetState(pRState);
         pRState->Release();
     }
 
@@ -95,14 +93,13 @@ void CleanupDeviceD3D()
 {
     CleanupRenderTarget();
     if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = NULL; }
-    if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = NULL; }
     if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
 }
 
-extern LRESULT ImGui_ImplDX11_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+extern LRESULT ImGui_ImplDX10_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplDX11_WndProcHandler(hWnd, msg, wParam, lParam))
+    if (ImGui_ImplDX10_WndProcHandler(hWnd, msg, wParam, lParam))
         return true;
 
     switch (msg)
@@ -110,11 +107,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_SIZE:
         if (g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED)
         {
-            ImGui_ImplDX11_InvalidateDeviceObjects();
+            ImGui_ImplDX10_InvalidateDeviceObjects();
             CleanupRenderTarget();
             g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
             CreateRenderTarget();
-            ImGui_ImplDX11_CreateDeviceObjects();
+            ImGui_ImplDX10_CreateDeviceObjects();
         }
         return 0;
     case WM_SYSCOMMAND:
@@ -133,7 +130,7 @@ int main(int, char**)
     // Create application window
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, LoadCursor(NULL, IDC_ARROW), NULL, NULL, _T("ImGui Example"), NULL };
     RegisterClassEx(&wc);
-    HWND hwnd = CreateWindow(_T("ImGui Example"), _T("ImGui DirectX11 Example"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
+    HWND hwnd = CreateWindow(_T("ImGui Example"), _T("ImGui DirectX10 Example"), WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL, NULL, wc.hInstance, NULL);
 
     // Initialize Direct3D
     if (CreateDeviceD3D(hwnd) < 0)
@@ -148,7 +145,7 @@ int main(int, char**)
     UpdateWindow(hwnd);
 
     // Setup ImGui binding
-    ImGui_ImplDX11_Init(hwnd, g_pd3dDevice, g_pd3dDeviceContext);
+    ImGui_ImplDX10_Init(hwnd, g_pd3dDevice);
 
     // Load Fonts
     // (there is a default font, this is only if you want to change it. see extra_fonts/README.txt for more details)
@@ -175,7 +172,7 @@ int main(int, char**)
             DispatchMessage(&msg);
             continue;
         }
-        ImGui_ImplDX11_NewFrame();
+        ImGui_ImplDX10_NewFrame();
 
         // 1. Show a simple window
         // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
@@ -206,12 +203,12 @@ int main(int, char**)
         }
 
         // Rendering
-        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
+        g_pd3dDevice->ClearRenderTargetView(g_mainRenderTargetView, (float*)&clear_col);
         ImGui::Render();
         g_pSwapChain->Present(0, 0);
     }
 
-    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplDX10_Shutdown();
     CleanupDeviceD3D();
     UnregisterClass(_T("ImGui Example"), wc.hInstance);
 

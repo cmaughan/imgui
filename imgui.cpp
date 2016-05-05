@@ -691,7 +691,7 @@ ImGuiStyle::ImGuiStyle()
     WindowRounding = 9.0f;             // Radius of window corners rounding. Set to 0.0f to have rectangular windows
     WindowTitleAlign = ImGuiAlign_Left;  // Alignment for title bar text
     ChildWindowRounding = 0.0f;             // Radius of child window corners rounding. Set to 0.0f to have rectangular windows
-    FramePadding = ImVec2(4, 3);      // Padding within a framed rectangle (used by most widgets)
+    FramePadding = ImVec2(4, 2);      // Padding within a framed rectangle (used by most widgets)
     FrameRounding = 4.0f;             // Radius of frame corners rounding. Set to 0.0f to have rectangular frames (used by most widgets).
     ItemSpacing = ImVec2(8, 4);      // Horizontal and vertical spacing between widgets/lines
     ItemInnerSpacing = ImVec2(4, 4);      // Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label)

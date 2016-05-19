@@ -564,6 +564,11 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#if defined(_MSC_VER)
+#pragma warning (disable: 4456) // condition expression is constant
+#pragma warning (disable: 4244) // unreferenced local function has been removed (stb stuff)
+#endif
+
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_PLACEMENT_NEW

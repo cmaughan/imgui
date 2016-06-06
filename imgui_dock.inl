@@ -1058,10 +1058,10 @@ struct DockContext
         std::vector<std::vector<std::string>> lines;
         while (std::getline(strData, line))
         {
-            auto tokens = MShared::MSplit(line, ':');
+            auto tokens = MSplit(line, ':');
             for (auto& tok : tokens)
             {
-                tok = MShared::Trim(tok);
+                tok = Trim(tok);
             }
 
             if (tokens[0].empty() ||

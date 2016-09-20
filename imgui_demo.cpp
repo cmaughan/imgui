@@ -1889,6 +1889,7 @@ struct ExampleAppConsole
 
     ExampleAppConsole()
     {
+		History.clear();
         ClearLog();
         memset(InputBuf, 0, sizeof(InputBuf));
         HistoryPos = -1;
@@ -1901,8 +1902,14 @@ struct ExampleAppConsole
     ~ExampleAppConsole()
     {
         ClearLog();
-        for (int i = 0; i < History.Size; i++)
-            free(History[i]);
+		for (int i = 0; i < History.size(); i++)
+		{
+			if (History[i])
+			{
+#pragma warning(suppress: 6001)
+				free(History[i]);
+			}
+		}
     }
 
     // Portable helpers
@@ -1912,8 +1919,13 @@ struct ExampleAppConsole
 
     void    ClearLog()
     {
-        for (int i = 0; i < Items.Size; i++)
-            free(Items[i]);
+		for (int i = 0; i < Items.Size; i++)
+		{
+			if (Items[i])
+			{
+				free(Items[i]);
+			}
+		}
         Items.clear();
         ScrollToBottom = true;
     }

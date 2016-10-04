@@ -3,14 +3,14 @@
 #include "imgui_internal.h" // ImSaturate
 #include "imgui_orient.h"
 
-std::vector<float>   ImOrient::s_SphTri;
-std::vector<ImU32> ImOrient::s_SphCol;
-std::vector<int>     ImOrient::s_SphTriProj;
-std::vector<ImU32> ImOrient::s_SphColLight;
-std::vector<float>   ImOrient::s_ArrowTri[4];
-std::vector<int>     ImOrient::s_ArrowTriProj[4];
-std::vector<float>   ImOrient::s_ArrowNorm[4];
-std::vector<ImU32> ImOrient::s_ArrowColLight[4];
+ImVector<float> ImOrient::s_SphTri;
+ImVector<ImU32> ImOrient::s_SphCol;
+ImVector<int>   ImOrient::s_SphTriProj;
+ImVector<ImU32> ImOrient::s_SphColLight;
+ImVector<float> ImOrient::s_ArrowTri[4];
+ImVector<int>   ImOrient::s_ArrowTriProj[4];
+ImVector<float> ImOrient::s_ArrowNorm[4];
+ImVector<ImU32> ImOrient::s_ArrowColLight[4];
 
 bool ImOrient::Orient(char* label)
 {
@@ -33,7 +33,7 @@ bool ImOrient::Orient(char* label)
     {
         ImGui::Text("V={%.2f,%.2f,%.2f} A=%.0f%c", Vx, Vy, Vz, Angle, 176);
     }
-    else if(m_IsDir )
+    else if (m_IsDir)
     {
         ImGui::Text("V={%.2f,%.2f,%.2f}", m_Dir[0], m_Dir[1], m_Dir[2]);
     }
@@ -97,10 +97,9 @@ bool ImOrient::Orient(char* label)
     Vec3Cross(ez, px, py);
 
     bool AA = style.AntiAliasedShapes;
-    const ImVec2 uv = GImGui->FontTexUvWhitePixel;
     style.AntiAliasedShapes = false;
-    //bool frameRightHanded = (ez[0] * pz[0] + ez[1] * pz[1] + ez[2] * pz[2] >= 0);
-    //Cull cull = frameRightHanded ? CULL_CW : CULL_CCW;
+    bool frameRightHanded = (ez[0] * pz[0] + ez[1] * pz[1] + ez[2] * pz[2] >= 0);
+    float cullDir = frameRightHanded ? 1.0f : -1.0f;
 
     if (drawDir)
     {
@@ -158,12 +157,7 @@ bool ImOrient::Orient(char* label)
                 colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f)));
             }
 
-            draw_list->PrimReserve(ntri, ntri); // num vert/indices 
-            for (int ii = 0; ii < ntri; ii++)
-            {
-                draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
-                draw_list->PrimWriteVtx(inner_pos + ImVec2(float(triProj[ii * 2]), float(triProj[ii * 2 + 1])), uv, colLight[ii]);
-            }
+            DrawTriangles(draw_list, inner_pos, triProj, colLight, ntri, cullDir);
         }
     }
     else
@@ -232,12 +226,8 @@ bool ImOrient::Orient(char* label)
                         ImU32 col = (l == 0) ? 0xffff0000 : ((l == 1) ? 0xff00ff00 : 0xff0000ff);
                         colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f))) & ImU32(alphaFadeCol);
                     }
-                    draw_list->PrimReserve(ntri, ntri); // num vert/indices 
-                    for (int ii = 0; ii < ntri; ii++)
-                    {
-                        draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
-                        draw_list->PrimWriteVtx(inner_pos + ImVec2(float(triProj[ii * 2]), float(triProj[ii * 2 + 1])), uv, colLight[ii]);
-                    }
+
+                    DrawTriangles(draw_list, inner_pos, triProj, colLight, ntri, cullDir);
                 }
             }
 
@@ -258,12 +248,7 @@ bool ImOrient::Orient(char* label)
                     colLight[i] = ColorBlend(0xff000000, col[i], fabsf(TClamp(z / SPH_RADIUS, -1.0f, 1.0f)))& ImU32(alpha);
                 }
 
-                draw_list->PrimReserve(ntri, ntri); // num vert/indices 
-                for (int ii = 0; ii < ntri; ii++)
-                {
-                    draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
-                    draw_list->PrimWriteVtx(inner_pos + ImVec2(float(triProj[ii * 2]), float(triProj[ii * 2 + 1])), uv, colLight[ii]);
-                }
+                DrawTriangles(draw_list, inner_pos, triProj, colLight, ntri, cullDir);
             }
         }
 
@@ -282,11 +267,40 @@ bool ImOrient::Orient(char* label)
     ImGui::EndGroup();
     ImGui::PopID();
 
-   
+
     style.AntiAliasedShapes = AA;
     return value_changed;
 }
 
+void ImOrient::DrawTriangles(ImDrawList* draw_list, ImVec2 offset, int* triProj, ImU32* colLight, int numVertices, float cullDir)
+{
+    const ImVec2 uv = GImGui->FontTexUvWhitePixel;
+    draw_list->PrimReserve(numVertices, numVertices); // num vert/indices 
+    for (int ii = 0; ii < numVertices / 3; ii++)
+    {
+        ImVec2 v1 = offset + ImVec2(float(triProj[ii * 6 + 0]), float(triProj[ii * 6 + 1]));
+        ImVec2 v2 = offset + ImVec2(float(triProj[ii * 6 + 2]), float(triProj[ii * 6 + 3]));
+        ImVec2 v3 = offset + ImVec2(float(triProj[ii * 6 + 4]), float(triProj[ii * 6 + 5]));
+
+        // 2D cross product to do culling
+        ImVec2 d1 = Vec2Subtract(v2, v1);
+        ImVec2 d2 = Vec2Subtract(v3, v1);
+        float c = Vec2Cross(d1, d2) * cullDir;
+        if (c > 0.0f)
+        {
+            v2 = v1;
+            v3 = v1;
+        }
+
+        draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
+        draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx + 1));
+        draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx + 2));
+        draw_list->PrimWriteVtx(v1, uv, colLight[ii * 3]);
+        draw_list->PrimWriteVtx(v2, uv, colLight[ii * 3 + 1]);
+        draw_list->PrimWriteVtx(v3, uv, colLight[ii * 3 + 2]);
+    }
+}
+            
 void ImOrient::CreateSphere()
 {
     const int SUBDIV = 7;
@@ -349,9 +363,9 @@ void ImOrient::CreateSphere()
             }
     }
     s_SphTriProj.clear();
-    s_SphTriProj.resize(2 * s_SphCol.size(), 0);
+    s_SphTriProj.resize(2 * s_SphCol.size());
     s_SphColLight.clear();
-    s_SphColLight.resize(s_SphCol.size(), 0);
+    s_SphColLight.resize(s_SphCol.size());
 }
 
 void ImOrient::CreateArrow()
@@ -425,9 +439,9 @@ void ImOrient::CreateArrow()
     for (i = 0; i < 4; ++i)
     {
         s_ArrowTriProj[i].clear();
-        s_ArrowTriProj[i].resize(2 * (s_ArrowTri[i].size() / 3), 0);
+        s_ArrowTriProj[i].resize(2 * (s_ArrowTri[i].size() / 3));
         s_ArrowColLight[i].clear();
-        s_ArrowColLight[i].resize(s_ArrowTri[i].size() / 3, 0);
+        s_ArrowColLight[i].resize(s_ArrowTri[i].size() / 3);
     }
 }
 
@@ -437,6 +451,30 @@ void ImOrient::Permute(float *outX, float *outY, float *outZ, float x, float y, 
     *outX = m_Permute[0][0] * px + m_Permute[1][0] * py + m_Permute[2][0] * pz;
     *outY = m_Permute[0][1] * px + m_Permute[1][1] * py + m_Permute[2][1] * pz;
     *outZ = m_Permute[0][2] * px + m_Permute[1][2] * py + m_Permute[2][2] * pz;
+}
+
+void ImOrient::PermuteInv(float *outX, float *outY, float *outZ, float x, float y, float z)
+{
+    float px = x, py = y, pz = z;
+    *outX = m_Permute[0][0]*px + m_Permute[0][1]*py + m_Permute[0][2]*pz;
+    *outY = m_Permute[1][0]*px + m_Permute[1][1]*py + m_Permute[1][2]*pz;
+    *outZ = m_Permute[2][0]*px + m_Permute[2][1]*py + m_Permute[2][2]*pz;
+}
+
+void ImOrient::Permute(double *outX, double *outY, double *outZ, double x, double y, double z)
+{
+    double px = x, py = y, pz = z;
+    *outX = m_Permute[0][0]*px + m_Permute[1][0]*py + m_Permute[2][0]*pz;
+    *outY = m_Permute[0][1]*px + m_Permute[1][1]*py + m_Permute[2][1]*pz;
+    *outZ = m_Permute[0][2]*px + m_Permute[1][2]*py + m_Permute[2][2]*pz;
+}
+
+void ImOrient::PermuteInv(double *outX, double *outY, double *outZ, double x, double y, double z)
+{
+    double px = x, py = y, pz = z;
+    *outX = m_Permute[0][0]*px + m_Permute[0][1]*py + m_Permute[0][2]*pz;
+    *outY = m_Permute[1][0]*px + m_Permute[1][1]*py + m_Permute[1][2]*pz;
+    *outZ = m_Permute[2][0]*px + m_Permute[2][1]*py + m_Permute[2][2]*pz;
 }
 
 void ImOrient::ApplyQuat(float *outX, float *outY, float *outZ, float x, float y, float z, float qx, float qy, float qz, float qs)
@@ -938,66 +976,7 @@ void ImGui_Orient::CopyToVar()
     }
 }
 */
-
 /*
-void ImGui_Orient::DrawCB(int w, int h, void *_ExtValue, void *_ClientData, TwBar *_Bar, CTwVarGroup *varGrp)
-{
-    if( g_TwMgr==NULL || g_TwMgr->m_Graph==NULL )
-        return;
-    assert( g_TwMgr->m_Graph->IsDrawing() );
-    ImGui_Orient *ext = static_cast<ImGui_Orient *>(_ExtValue);
-    assert( ext!=NULL );
-    (void)_ClientData; (void)_Bar;
-
-    // show/hide quat values
-    assert( varGrp->m_Vars.size()==16 );
-    bool visible = ext->m_ShowVal;
-    if( ext->m_IsDir )
-    {
-        if(    varGrp->m_Vars[13]->m_Visible != visible
-            || varGrp->m_Vars[14]->m_Visible != visible
-            || varGrp->m_Vars[15]->m_Visible != visible )
-        {
-            varGrp->m_Vars[13]->m_Visible = visible;
-            varGrp->m_Vars[14]->m_Visible = visible;
-            varGrp->m_Vars[15]->m_Visible = visible;
-            _Bar->NotUpToDate();
-        }
-    }
-    else
-    {
-        if(    varGrp->m_Vars[4]->m_Visible != visible
-            || varGrp->m_Vars[5]->m_Visible != visible
-            || varGrp->m_Vars[6]->m_Visible != visible
-            || varGrp->m_Vars[7]->m_Visible != visible )
-        {
-            varGrp->m_Vars[4]->m_Visible = visible;
-            varGrp->m_Vars[5]->m_Visible = visible;
-            varGrp->m_Vars[6]->m_Visible = visible;
-            varGrp->m_Vars[7]->m_Visible = visible;
-            _Bar->NotUpToDate();
-        }
-    }
-
-    // force ext update
-    static_cast<CTwVarAtom *>(varGrp->m_Vars[4])->ValueToDouble();
-
-    assert( s_SphTri.size()>0 );
-    assert( s_SphTri.size()==3*s_SphCol.size() );
-    assert( s_SphTriProj.size()==2*s_SphCol.size() );
-    assert( s_SphColLight.size()==s_SphCol.size() );
-
-    if( QuatD(w, h)<=2 )
-        return;
-
-
-    // draw borders
-    g_TwMgr->m_Graph->DrawLine(1, 0, w-1, 0, 0x40000000);
-    g_TwMgr->m_Graph->DrawLine(w-1, 0, w-1, h-1, 0x40000000);
-    g_TwMgr->m_Graph->DrawLine(w-1, h-1, 1, h-1, 0x40000000);
-    g_TwMgr->m_Graph->DrawLine(1, h-1, 1, 0, 0x40000000);
-}
-
 bool ImGui_Orient::MouseMotionCB(int mouseX, int mouseY, int w, int h, void *structExtValue, void *clientData, TwBar *bar, CTwVarGroup *varGrp)
 {
     ImGui_Orient *ext = static_cast<ImGui_Orient *>(structExtValue);
@@ -1146,6 +1125,33 @@ void ImOrient::QuatFromAxisAngle(double *out, const double *axis, double angle)
     }
 }
 
+void ImOrient::QuatFromDir(double *outQx, double *outQy, double *outQz, double *outQs, double dx, double dy, double dz)
+{
+    // compute a quaternion that rotates (1,0,0) to (dx,dy,dz)
+    double dn = sqrt(dx*dx + dy*dy + dz*dz);
+    if (dn < DBL_EPSILON * DBL_EPSILON)
+    {
+        *outQx = *outQy = *outQz = 0;
+        *outQs = 1;
+    }
+    else
+    {
+        double rotAxis[3] = { 0, -dz, dy };
+        if (rotAxis[0] * rotAxis[0] + rotAxis[1] * rotAxis[1] + rotAxis[2] * rotAxis[2] < (DBL_EPSILON * DBL_EPSILON))
+        {
+            rotAxis[0] = rotAxis[1] = 0;
+            rotAxis[2] = 1;
+        }
+        double rotAngle = acos(dx / dn);
+        double rotQuat[4];
+        QuatFromAxisAngle(rotQuat, rotAxis, rotAngle);
+        *outQx = rotQuat[0];
+        *outQy = rotQuat[1];
+        *outQz = rotQuat[2];
+        *outQs = rotQuat[3];
+    }
+}
+
 void ImOrient::Vec3Cross(double *out, const double *a, const double *b)
 {
     out[0] = a[1] * b[2] - a[2] * b[1];
@@ -1174,27 +1180,3 @@ void ImOrient::Vec3RotZ(float *x, float *y, float *z)
     *y = tmp;
 }
 
-float ImOrient::QuatD(int w, int h)
-{
-    return (float)std::min(abs(w), abs(h)) - 4;
-}
-
-int ImOrient::QuatPX(float x, int w, int h)
-{
-    return (int)(x*0.5f*QuatD(w, h) + (float)w*0.5f + 0.5f);
-}
-
-int ImOrient::QuatPY(float y, int w, int h)
-{
-    return (int)(-y*0.5f*QuatD(w, h) + (float)h*0.5f - 0.5f);
-}
-
-float ImOrient::QuatIX(int x, int w, int h)
-{
-    return (2.0f*(float)x - (float)w - 1.0f) / QuatD(w, h);
-}
-
-float ImOrient::QuatIY(int y, int w, int h)
-{
-    return (-2.0f*(float)y + (float)h - 1.0f) / QuatD(w, h);
-}

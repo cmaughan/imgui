@@ -3,56 +3,80 @@
 #include "imgui_internal.h" // ImSaturate
 #include "imgui_orient.h"
 
-std::vector<float>   ImQuat::s_SphTri;
-std::vector<color32> ImQuat::s_SphCol;
-std::vector<int>     ImQuat::s_SphTriProj;
-std::vector<color32> ImQuat::s_SphColLight;
-std::vector<float>   ImQuat::s_ArrowTri[4];
-std::vector<int>     ImQuat::s_ArrowTriProj[4];
-std::vector<float>   ImQuat::s_ArrowNorm[4];
-std::vector<color32> ImQuat::s_ArrowColLight[4];
+std::vector<float>   ImOrient::s_SphTri;
+std::vector<ImU32> ImOrient::s_SphCol;
+std::vector<int>     ImOrient::s_SphTriProj;
+std::vector<ImU32> ImOrient::s_SphColLight;
+std::vector<float>   ImOrient::s_ArrowTri[4];
+std::vector<int>     ImOrient::s_ArrowTriProj[4];
+std::vector<float>   ImOrient::s_ArrowNorm[4];
+std::vector<ImU32> ImOrient::s_ArrowColLight[4];
 
-bool IMGUI_API ImGui_Orient(char* label, ImQuat& qt)
+bool ImOrient::Orient(char* label)
 {
     //    ImGuiIO& io = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-    if (ImQuat::s_SphTri.empty())
+    if (ImOrient::s_SphTri.empty())
     {
-        ImQuat::CreateArrow();
-        ImQuat::CreateSphere();
+        ImOrient::CreateArrow();
+        ImOrient::CreateSphere();
     }
 
     ImGui::PushID(label);
     ImGui::BeginGroup();
 
     bool value_changed = false;
-    // Setup
+
+    if (m_AAMode)
+    {
+        ImGui::Text("V={%.2f,%.2f,%.2f} A=%.0f%c", Vx, Vy, Vz, Angle, 176);
+    }
+    else if(m_IsDir )
+    {
+        ImGui::Text("V={%.2f,%.2f,%.2f}", m_Dir[0], m_Dir[1], m_Dir[2]);
+    }
+    else
+    {
+        ImGui::Text("Q={x:%.2f,y:%.2f,z:%.2f,s:%.2f}", Qx, Qy, Qz, Qs);
+    }
+
     ImVec2 orient_pos = ImGui::GetCursorScreenPos();
-    float sv_orient_size = ImGui::CalcItemWidth() / 2.0f;
+    float sv_orient_size = ImGui::CalcItemWidth() / 3.0f;
     ImGui::InvisibleButton("orient", ImVec2(sv_orient_size, sv_orient_size));
 
-    draw_list->AddRectFilled(orient_pos, orient_pos + ImVec2(sv_orient_size, sv_orient_size), IM_COL32_BLACK);
+    draw_list->AddRectFilled(orient_pos, orient_pos + ImVec2(sv_orient_size, sv_orient_size), ImColor(style.Colors[ImGuiCol_FrameBg]), style.FrameRounding);
 
     float w = sv_orient_size;
     float h = sv_orient_size;
 
+    double normDir = sqrt(m_Dir[0] * m_Dir[0] + m_Dir[1] * m_Dir[1] + m_Dir[2] * m_Dir[2]);
+    bool drawDir = m_IsDir || (normDir > DBL_EPSILON);
+
     ImVec2 inner_pos = orient_pos;
-    inner_pos.x += sv_orient_size * .25f * .5f;
-    inner_pos.y += sv_orient_size * .25f * .5f;
-    float inner_size = w * .75f;
+    float inner_size = w;
+    if (drawDir)
+    {
+        inner_size = sv_orient_size;
+    }
+    else
+    {
+        inner_pos.x += sv_orient_size * .25f * .5f;
+        inner_pos.y += sv_orient_size * .25f * .5f;
+        inner_size *= .75f;
+    }
     float x, y, z, nx, ny, nz, kx, ky, kz, qx, qy, qz, qs;
     int i, j, k, l, m;
 
     // normalize quaternion
-    float qn = (float)sqrt(qt.Qs*qt.Qs + qt.Qx*qt.Qx + qt.Qy*qt.Qy + qt.Qz*qt.Qz);
+    float qn = (float)sqrt(Qs*Qs + Qx*Qx + Qy*Qy + Qz*Qz);
     if (qn > FLT_EPSILON)
     {
-        qx = (float)qt.Qx / qn;
-        qy = (float)qt.Qy / qn;
-        qz = (float)qt.Qz / qn;
-        qs = (float)qt.Qs / qn;
+        qx = (float)Qx / qn;
+        qy = (float)Qy / qn;
+        qz = (float)Qz / qn;
+        qs = (float)Qs / qn;
     }
     else
     {
@@ -60,87 +84,89 @@ bool IMGUI_API ImGui_Orient(char* label, ImQuat& qt)
         qs = 1;
     }
 
-    //    double normDir = sqrt(qt.m_Dir[0] * qt.m_Dir[0] + qt.m_Dir[1] * qt.m_Dir[1] + qt.m_Dir[2] * qt.m_Dir[2]);
-    //    bool drawDir = qt.m_IsDir || (normDir > DBL_EPSILON);
-    color32 alpha = qt.m_Highlighted ? 0xffffffff : 0xb0ffffff;
+    ImColor alpha(1.0f, 1.0f, 1.0f, m_Highlighted ? 1.0f : 0.74f);
 
     // check if frame is right-handed
-    qt.Permute(&kx, &ky, &kz, 1, 0, 0);
+    Permute(&kx, &ky, &kz, 1, 0, 0);
     double px[3] = { (double)kx, (double)ky, (double)kz };
-    qt.Permute(&kx, &ky, &kz, 0, 1, 0);
+    Permute(&kx, &ky, &kz, 0, 1, 0);
     double py[3] = { (double)kx, (double)ky, (double)kz };
-    qt.Permute(&kx, &ky, &kz, 0, 0, 1);
+    Permute(&kx, &ky, &kz, 0, 0, 1);
     double pz[3] = { (double)kx, (double)ky, (double)kz };
     double ez[3];
     Vec3Cross(ez, px, py);
-   
+
     bool AA = style.AntiAliasedShapes;
+    const ImVec2 uv = GImGui->FontTexUvWhitePixel;
     style.AntiAliasedShapes = false;
-    //    bool frameRightHanded = (ez[0] * pz[0] + ez[1] * pz[1] + ez[2] * pz[2] >= 0);
-    //    Cull cull = frameRightHanded ? CULL_CW : CULL_CCW;
+    //bool frameRightHanded = (ez[0] * pz[0] + ez[1] * pz[1] + ez[2] * pz[2] >= 0);
+    //Cull cull = frameRightHanded ? CULL_CW : CULL_CCW;
 
-        /*
-        if( drawDir )
+    if (drawDir)
+    {
+        float dir[] = { (float)m_Dir[0], (float)m_Dir[1], (float)m_Dir[2] };
+        if (normDir < DBL_EPSILON)
         {
-            float dir[] = {(float)qt.m_Dir[0], (float)qt.m_Dir[1], (float)qt.m_Dir[2]};
-            if( normDir<DOUBLE_EPS )
-            {
-                normDir = 1;
-                dir[0] = 1;
-            }
-            kx = dir[0]; ky = dir[1]; kz = dir[2];
-            double rotDirAxis[3] = { 0, -kz, ky };
-            if( rotDirAxis[0]*rotDirAxis[0] + rotDirAxis[1]*rotDirAxis[1] + rotDirAxis[2]*rotDirAxis[2]<DOUBLE_EPS_SQ )
-            {
-                rotDirAxis[0] = rotDirAxis[1] = 0;
-                rotDirAxis[2] = 1;
-            }
-            double rotDirAngle = acos(kx/normDir);
-            double rotDirQuat[4];
-            QuatFromAxisAngle(rotDirQuat, rotDirAxis, rotDirAngle);
+            normDir = 1;
+            dir[0] = 1;
+        }
+        kx = dir[0]; ky = dir[1]; kz = dir[2];
+        double rotDirAxis[3] = { 0, -kz, ky };
+        if (rotDirAxis[0] * rotDirAxis[0] + rotDirAxis[1] * rotDirAxis[1] + rotDirAxis[2] * rotDirAxis[2] < (DBL_EPSILON*DBL_EPSILON))
+        {
+            rotDirAxis[0] = rotDirAxis[1] = 0;
+            rotDirAxis[2] = 1;
+        }
+        double rotDirAngle = acos(kx / normDir);
+        double rotDirQuat[4];
+        QuatFromAxisAngle(rotDirQuat, rotDirAxis, rotDirAngle);
 
-            kx = 1; ky = 0; kz = 0;
-            ApplyQuat(&kx, &ky, &kz, kx, ky, kz, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
-            ApplyQuat(&kx, &ky, &kz, kx, ky, kz, qx, qy, qz, qs);
-            for(k=0; k<4; ++k) // 4 parts of the arrow
-            {
-                // draw order
-                qt.Permute(&x, &y, &z, kx, ky, kz);
-                j = (z>0) ? 3-k : k;
+        kx = 1; ky = 0; kz = 0;
+        ApplyQuat(&kx, &ky, &kz, kx, ky, kz, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
+        ApplyQuat(&kx, &ky, &kz, kx, ky, kz, qx, qy, qz, qs);
+        for (k = 0; k < 4; ++k) // 4 parts of the arrow
+        {
+            // draw order
+            Permute(&x, &y, &z, kx, ky, kz);
+            j = (z > 0) ? 3 - k : k;
 
-                assert( s_ArrowTriProj[j].size()==2*(s_ArrowTri[j].size()/3) && s_ArrowColLight[j].size()==s_ArrowTri[j].size()/3 && s_ArrowNorm[j].size()==s_ArrowTri[j].size() );
-                const int ntri = (int)s_ArrowTri[j].size()/3;
-                const float *tri = &(s_ArrowTri[j][0]);
-                const float *norm = &(s_ArrowNorm[j][0]);
-                int *triProj = &(s_ArrowTriProj[j][0]);
-                color32 *colLight = &(s_ArrowColLight[j][0]);
-                for(i=0; i<ntri; ++i)
-                {
-                    x = tri[3*i+0]; y = tri[3*i+1]; z = tri[3*i+2];
-                    nx = norm[3*i+0]; ny = norm[3*i+1]; nz = norm[3*i+2];
-                    if( x>0 )
-                        x = 2.5f*x - 2.0f;
-                    else
-                        x += 0.2f;
-                    y *= 1.5f;
-                    z *= 1.5f;
-                    ApplyQuat(&x, &y, &z, x, y, z, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
-                    ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
-                    qt.Permute(&x, &y, &z, x, y, z);
-                    ApplyQuat(&nx, &ny, &nz, nx, ny, nz, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
-                    ApplyQuat(&nx, &ny, &nz, nx, ny, nz, qx, qy, qz, qs);
-                    qt.Permute(&nx, &ny, &nz, nx, ny, nz);
-                    triProj[2*i+0] = QuatPX(x, w, h);
-                    triProj[2*i+1] = QuatPY(y, w, h);
-                    color32 col = (qt.m_DirColor|0xff000000) & alpha;
-                    colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f)));
-                }
-                if( s_ArrowTri[j].size()>=9 ) // 1 tri = 9 floats
-                    g_TwMgr->m_Graph->DrawTriangles((int)s_ArrowTri[j].size()/9, triProj, colLight, cull);
+            assert(s_ArrowTriProj[j].size() == 2 * (s_ArrowTri[j].size() / 3) && s_ArrowColLight[j].size() == s_ArrowTri[j].size() / 3 && s_ArrowNorm[j].size() == s_ArrowTri[j].size());
+            const int ntri = (int)s_ArrowTri[j].size() / 3;
+            const float *tri = &(s_ArrowTri[j][0]);
+            const float *norm = &(s_ArrowNorm[j][0]);
+            int *triProj = &(s_ArrowTriProj[j][0]);
+            ImU32 *colLight = &(s_ArrowColLight[j][0]);
+            for (i = 0; i < ntri; ++i)
+            {
+                x = tri[3 * i + 0]; y = tri[3 * i + 1]; z = tri[3 * i + 2];
+                nx = norm[3 * i + 0]; ny = norm[3 * i + 1]; nz = norm[3 * i + 2];
+                if (x > 0)
+                    x = 2.5f*x - 2.0f;
+                else
+                    x += 0.2f;
+                y *= 1.5f;
+                z *= 1.5f;
+                ApplyQuat(&x, &y, &z, x, y, z, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
+                ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
+                Permute(&x, &y, &z, x, y, z);
+                ApplyQuat(&nx, &ny, &nz, nx, ny, nz, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
+                ApplyQuat(&nx, &ny, &nz, nx, ny, nz, qx, qy, qz, qs);
+                Permute(&nx, &ny, &nz, nx, ny, nz);
+                triProj[2 * i + 0] = QuatPX(x, int(w), int(h));
+                triProj[2 * i + 1] = QuatPY(y, int(w), int(h));
+                ImU32 col = (m_DirColor | 0xff000000) & alpha;
+                colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f)));
+            }
+
+            draw_list->PrimReserve(ntri, ntri); // num vert/indices 
+            for (int ii = 0; ii < ntri; ii++)
+            {
+                draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
+                draw_list->PrimWriteVtx(inner_pos + ImVec2(float(triProj[ii * 2]), float(triProj[ii * 2 + 1])), uv, colLight[ii]);
             }
         }
-        else
-        */
+    }
+    else
     {
         // draw arrows & sphere
         const float SPH_RADIUS = 0.75f;
@@ -153,27 +179,27 @@ bool IMGUI_API ImGui_Orient(char* label, ImQuat& qt)
                     Vec3RotZ(&kx, &ky, &kz);
                 else if (l == 2)
                     Vec3RotY(&kx, &ky, &kz);
-                ImQuat::ApplyQuat(&kx, &ky, &kz, kx, ky, kz, qx, qy, qz, qs);
+                ImOrient::ApplyQuat(&kx, &ky, &kz, kx, ky, kz, qx, qy, qz, qs);
                 for (k = 0; k < 4; ++k) // 4 parts of the arrow
                 {
                     // draw order
-                    qt.Permute(&x, &y, &z, kx, ky, kz);
+                    Permute(&x, &y, &z, kx, ky, kz);
                     j = (z > 0) ? 3 - k : k;
 
                     bool cone = true;
                     if ((m == 0 && z > 0) || (m == 1 && z <= 0))
                     {
-                        if (j == ImQuat::ARROW_CONE || j == ImQuat::ARROW_CONE_CAP) // do not draw cone
+                        if (j == ImOrient::ARROW_CONE || j == ImOrient::ARROW_CONE_CAP) // do not draw cone
                             continue;
                         else
                             cone = false;
                     }
-                    assert(ImQuat::s_ArrowTriProj[j].size() == 2 * (ImQuat::s_ArrowTri[j].size() / 3) && ImQuat::s_ArrowColLight[j].size() == ImQuat::s_ArrowTri[j].size() / 3 && ImQuat::s_ArrowNorm[j].size() == ImQuat::s_ArrowTri[j].size());
-                    const int ntri = (int)ImQuat::s_ArrowTri[j].size() / 3;
-                    const float *tri = &(ImQuat::s_ArrowTri[j][0]);
-                    const float *norm = &(ImQuat::s_ArrowNorm[j][0]);
-                    int *triProj = &(ImQuat::s_ArrowTriProj[j][0]);
-                    color32 *colLight = &(ImQuat::s_ArrowColLight[j][0]);
+                    assert(ImOrient::s_ArrowTriProj[j].size() == 2 * (ImOrient::s_ArrowTri[j].size() / 3) && ImOrient::s_ArrowColLight[j].size() == ImOrient::s_ArrowTri[j].size() / 3 && ImOrient::s_ArrowNorm[j].size() == ImOrient::s_ArrowTri[j].size());
+                    const int ntri = (int)ImOrient::s_ArrowTri[j].size() / 3;
+                    const float *tri = &(ImOrient::s_ArrowTri[j][0]);
+                    const float *norm = &(ImOrient::s_ArrowNorm[j][0]);
+                    int *triProj = &(ImOrient::s_ArrowTriProj[j][0]);
+                    ImU32 *colLight = &(ImOrient::s_ArrowColLight[j][0]);
                     for (i = 0; i < ntri; ++i)
                     {
                         x = tri[3 * i + 0]; y = tri[3 * i + 1]; z = tri[3 * i + 2];
@@ -192,55 +218,51 @@ bool IMGUI_API ImGui_Orient(char* label, ImQuat& qt)
                             Vec3RotY(&x, &y, &z);
                             Vec3RotY(&nx, &ny, &nz);
                         }
-                        ImQuat::ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
-                        qt.Permute(&x, &y, &z, x, y, z);
-                        ImQuat::ApplyQuat(&nx, &ny, &nz, nx, ny, nz, qx, qy, qz, qs);
-                        qt.Permute(&nx, &ny, &nz, nx, ny, nz);
+                        ImOrient::ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
+                        Permute(&x, &y, &z, x, y, z);
+                        ImOrient::ApplyQuat(&nx, &ny, &nz, nx, ny, nz, qx, qy, qz, qs);
+                        Permute(&nx, &ny, &nz, nx, ny, nz);
                         triProj[2 * i + 0] = QuatPX(x, int(inner_size), int(inner_size));
                         triProj[2 * i + 1] = QuatPY(y, int(inner_size), int(inner_size));
                         float fade = (m == 0 && z < 0) ? TClamp(2.0f*z*z, 0.0f, 1.0f) : 0;
                         float alphaFade = 1.0f;
-                        Color32ToARGBf(alpha, &alphaFade, NULL, NULL, NULL);
+                        alphaFade = alpha.Value.w;
                         alphaFade *= (1.0f - fade);
-                        color32 alphaFadeCol = Color32FromARGBf(alphaFade, 1, 1, 1);
-                        color32 col = (l == 0) ? 0xffff0000 : ((l == 1) ? 0xff00ff00 : 0xff0000ff);
-                        colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f))) & alphaFadeCol;
+                        ImColor alphaFadeCol(1.0f, 1.0f, 1.0f, alphaFade);
+                        ImU32 col = (l == 0) ? 0xffff0000 : ((l == 1) ? 0xff00ff00 : 0xff0000ff);
+                        colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f))) & ImU32(alphaFadeCol);
                     }
-                    if (ImQuat::s_ArrowTri[j].size() >= 9) // 1 tri = 9 floats
+                    draw_list->PrimReserve(ntri, ntri); // num vert/indices 
+                    for (int ii = 0; ii < ntri; ii++)
                     {
-                        for (int ii = 0; ii < (int)ImQuat::s_ArrowTri[j].size() / 9; ii++)
-                        {
-                            draw_list->AddTriangleFilled(inner_pos + ImVec2(float(triProj[ii * 6]), float(triProj[ii * 6 + 1])),
-                                inner_pos + ImVec2(float(triProj[ii * 6 + 2]), float(triProj[ii * 6 + 3])),
-                                inner_pos + ImVec2(float(triProj[ii * 6 + 4]), float(triProj[ii * 6 + 5])),
-                                colLight[ii * 3]);
-                        }
+                        draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
+                        draw_list->PrimWriteVtx(inner_pos + ImVec2(float(triProj[ii * 2]), float(triProj[ii * 2 + 1])), uv, colLight[ii]);
                     }
                 }
             }
 
             if (m == 0)
             {
-                const float *tri = &(ImQuat::s_SphTri[0]);
-                int *triProj = &(ImQuat::s_SphTriProj[0]);
-                const color32 *col = &(ImQuat::s_SphCol[0]);
-                color32 *colLight = &(ImQuat::s_SphColLight[0]);
-                const int ntri = (int)ImQuat::s_SphTri.size() / 3;
+                const float *tri = &(ImOrient::s_SphTri[0]);
+                int *triProj = &(ImOrient::s_SphTriProj[0]);
+                const ImU32 *col = &(ImOrient::s_SphCol[0]);
+                ImU32 *colLight = &(ImOrient::s_SphColLight[0]);
+                const int ntri = (int)ImOrient::s_SphTri.size() / 3;
                 for (i = 0; i < ntri; ++i)   // draw sphere
                 {
                     x = SPH_RADIUS*tri[3 * i + 0]; y = SPH_RADIUS*tri[3 * i + 1]; z = SPH_RADIUS*tri[3 * i + 2];
-                    ImQuat::ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
-                    qt.Permute(&x, &y, &z, x, y, z);
+                    ImOrient::ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
+                    Permute(&x, &y, &z, x, y, z);
                     triProj[2 * i + 0] = QuatPX(x, int(inner_size), int(inner_size));
                     triProj[2 * i + 1] = QuatPY(y, int(inner_size), int(inner_size));
-                    colLight[i] = ColorBlend(0xff000000, col[i], fabsf(TClamp(z / SPH_RADIUS, -1.0f, 1.0f))) & alpha;
+                    colLight[i] = ColorBlend(0xff000000, col[i], fabsf(TClamp(z / SPH_RADIUS, -1.0f, 1.0f)))& ImU32(alpha);
                 }
-                for (int ii = 0; ii < (int)ImQuat::s_SphTri.size() / 9; ii++)
+
+                draw_list->PrimReserve(ntri, ntri); // num vert/indices 
+                for (int ii = 0; ii < ntri; ii++)
                 {
-                    draw_list->AddTriangleFilled(inner_pos + ImVec2(float(triProj[ii * 6]), float(triProj[ii * 6 + 1])),
-                        inner_pos + ImVec2(float(triProj[ii * 6 + 2]), float(triProj[ii * 6 + 3])),
-                        inner_pos + ImVec2(float(triProj[ii * 6 + 4]), float(triProj[ii * 6 + 5])),
-                        colLight[ii * 3]);
+                    draw_list->PrimWriteIdx(ImDrawIdx(draw_list->_VtxCurrentIdx));
+                    draw_list->PrimWriteVtx(inner_pos + ImVec2(float(triProj[ii * 2]), float(triProj[ii * 2 + 1])), uv, colLight[ii]);
                 }
             }
         }
@@ -260,11 +282,12 @@ bool IMGUI_API ImGui_Orient(char* label, ImQuat& qt)
     ImGui::EndGroup();
     ImGui::PopID();
 
+   
     style.AntiAliasedShapes = AA;
     return value_changed;
 }
 
-void ImQuat::CreateSphere()
+void ImOrient::CreateSphere()
 {
     const int SUBDIV = 7;
     s_SphTri.clear();
@@ -273,13 +296,13 @@ void ImQuat::CreateSphere()
     const float A[8 * 3] = { 1,0,0, 0,0,-1, -1,0,0, 0,0,1,   0,0,1,  1,0,0,  0,0,-1, -1,0,0 };
     const float B[8 * 3] = { 0,1,0, 0,1,0,  0,1,0,  0,1,0,   0,-1,0, 0,-1,0, 0,-1,0, 0,-1,0 };
     const float C[8 * 3] = { 0,0,1, 1,0,0,  0,0,-1, -1,0,0,  1,0,0,  0,0,-1, -1,0,0, 0,0,1 };
-    const color32 COL_A[8] = { 0xffffffff, 0xffffff40, 0xff40ff40, 0xff40ffff,  0xffff40ff, 0xffff4040, 0xff404040, 0xff4040ff };
-    const color32 COL_B[8] = { 0xffffffff, 0xffffff40, 0xff40ff40, 0xff40ffff,  0xffff40ff, 0xffff4040, 0xff404040, 0xff4040ff };
-    const color32 COL_C[8] = { 0xffffffff, 0xffffff40, 0xff40ff40, 0xff40ffff,  0xffff40ff, 0xffff4040, 0xff404040, 0xff4040ff };
+    const ImU32 COL_A[8] = { 0xffffffff, 0xff40ffFF, 0xff40ff40, 0xffffff40,  0xffff40ff, 0xff4040FF, 0xff404040, 0xffFF4040 };
+    const ImU32 COL_B[8] = { 0xffffffff, 0xff40ffFF, 0xff40ff40, 0xffffff40,  0xffff40ff, 0xff4040FF, 0xff404040, 0xffFF4040 };
+    const ImU32 COL_C[8] = { 0xffffffff, 0xff40ffFF, 0xff40ff40, 0xffffff40,  0xffff40ff, 0xff4040FF, 0xff404040, 0xffFF4040 };
 
     int i, j, k, l;
     float xa, ya, za, xb, yb, zb, xc, yc, zc, x, y, z, norm, u[3], v[3];
-    color32 col;
+    ImU32 col;
     for (i = 0; i < 8; ++i)
     {
         xa = A[3 * i + 0]; ya = A[3 * i + 1]; za = A[3 * i + 2];
@@ -331,7 +354,7 @@ void ImQuat::CreateSphere()
     s_SphColLight.resize(s_SphCol.size(), 0);
 }
 
-void ImQuat::CreateArrow()
+void ImOrient::CreateArrow()
 {
     const int   SUBDIV = 15;
     const float CYL_RADIUS = 0.08f;
@@ -408,7 +431,7 @@ void ImQuat::CreateArrow()
     }
 }
 
-void ImQuat::Permute(float *outX, float *outY, float *outZ, float x, float y, float z)
+void ImOrient::Permute(float *outX, float *outY, float *outZ, float x, float y, float z)
 {
     float px = x, py = y, pz = z;
     *outX = m_Permute[0][0] * px + m_Permute[1][0] * py + m_Permute[2][0] * pz;
@@ -416,7 +439,7 @@ void ImQuat::Permute(float *outX, float *outY, float *outZ, float x, float y, fl
     *outZ = m_Permute[0][2] * px + m_Permute[1][2] * py + m_Permute[2][2] * pz;
 }
 
-void ImQuat::ApplyQuat(float *outX, float *outY, float *outZ, float x, float y, float z, float qx, float qy, float qz, float qs)
+void ImOrient::ApplyQuat(float *outX, float *outY, float *outZ, float x, float y, float z, float qx, float qy, float qz, float qs)
 {
     float ps = -qx * x - qy * y - qz * z;
     float px = qs * x + qy * z - qz * y;
@@ -427,7 +450,7 @@ void ImQuat::ApplyQuat(float *outX, float *outY, float *outZ, float x, float y, 
     *outZ = -ps * qz + pz * qs - px * qy + py * qx;
 }
 
-ImQuat::ImQuat()
+ImOrient::ImOrient()
 {
     Qx = Qy = Qz = 0;
     Qs = 1;
@@ -440,7 +463,7 @@ ImQuat::ImQuat()
     m_IsFloat = true;
     m_IsDir = false;
     m_Dir[0] = m_Dir[1] = m_Dir[2] = 0;
-    m_DirColor = 0xffffff00;
+    m_DirColor = 0xff00ffff;
     int i, j;
     for (i = 0; i < 3; ++i)
         for (j = 0; j < 3; ++j)
@@ -467,7 +490,7 @@ void IMGUI_API ImGui_Orient::InitQuat4DCB(void *_ExtValue, void *_ClientData)
         ext->m_IsFloat = false;
         ext->m_IsDir = false;
         ext->m_Dir[0] = ext->m_Dir[1] = ext->m_Dir[2] = 0;
-        ext->m_DirColor = 0xffffff00;
+        ext->m_DirColor = 0xff00ffff;
         int i, j;
         for(i=0; i<3; ++i)
             for(j=0; j<3; ++j)
@@ -503,7 +526,7 @@ void IMGUI_API ImGui_Orient::InitDir3FCB(void *_ExtValue, void *_ClientData)
         ext->m_IsFloat = true;
         ext->m_IsDir = true;
         ext->m_Dir[0] = ext->m_Dir[1] = ext->m_Dir[2] = 0;
-        ext->m_DirColor = 0xffffff00;
+        ext->m_DirColor = 0xff00ffff;
         int i, j;
         for(i=0; i<3; ++i)
             for(j=0; j<3; ++j)
@@ -539,7 +562,7 @@ void IMGUI_API ImGui_Orient::InitDir3DCB(void *_ExtValue, void *_ClientData)
         ext->m_IsFloat = false;
         ext->m_IsDir = true;
         ext->m_Dir[0] = ext->m_Dir[1] = ext->m_Dir[2] = 0;
-        ext->m_DirColor = 0xffffff00;
+        ext->m_DirColor = 0xff00ffff;
         int i, j;
         for(i=0; i<3; ++i)
             for(j=0; j<3; ++j)
@@ -779,7 +802,7 @@ void IMGUI_API ImGui_Orient::CopyVarToExtCB(const void *_VarValue, void *_ExtVal
     }
 }
 */
-void ImQuat::ConvertToAxisAngle()
+void ImOrient::ConvertToAxisAngle()
 {
     if (fabs(Qs) > (1.0 + FLT_EPSILON))
     {
@@ -792,7 +815,7 @@ void ImQuat::ConvertToAxisAngle()
         if (Qs >= 1.0f)
             a = 0; // and keep V
         else if (Qs <= -1.0f)
-            a = DOUBLE_PI; // and keep V
+            a = M_PI; // and keep V
         else if (fabs(Qx*Qx + Qy*Qy + Qz*Qz + Qs*Qs) < (FLT_EPSILON * FLT_EPSILON))
             a = 0;
         else
@@ -810,14 +833,14 @@ void ImQuat::ConvertToAxisAngle()
 
     Angle = RadToDeg(Angle);
 
-    if (fabs(Angle) < FLOAT_EPS && fabs(Vx*Vx + Vy*Vy + Vz*Vz) < FLOAT_EPS_SQ)
+    if (fabs(Angle) < FLT_EPSILON && fabs(Vx*Vx + Vy*Vy + Vz*Vz) < FLT_EPSILON * FLT_EPSILON)
         Vx = 1.0e-7;    // all components cannot be null
 }
 
-void ImQuat::ConvertFromAxisAngle()
+void ImOrient::ConvertFromAxisAngle()
 {
     double n = Vx*Vx + Vy*Vy + Vz*Vz;
-    if (fabs(n) > FLOAT_EPS_SQ)
+    if (fabs(n) > (FLT_EPSILON * FLT_EPSILON))
     {
         double f = 0.5*DegToRad(Angle);
         Qs = cos(f);
@@ -1081,3 +1104,97 @@ void ImGui_Orient::MouseLeaveCB(void *structExtValue, void *clientData, TwBar *b
     ext->m_Rotating = false;
 }
 */
+
+ImU32 ImOrient::ColorBlend(ImU32 _Color1, ImU32 _Color2, float sigma)
+{
+    ImColor color1(_Color1);
+    ImColor color2(_Color2);
+    float invSigma = 1.0f - sigma;
+
+    color1 = ImColor((color1.Value.x * invSigma) + (color2.Value.x * sigma),
+        (color1.Value.y * invSigma) + (color2.Value.y * sigma),
+        (color1.Value.z * invSigma) + (color2.Value.z * sigma),
+        (color1.Value.w * invSigma) + (color2.Value.w * sigma));
+
+    return color1;
+}
+
+void ImOrient::QuatMult(double *out, const double *q1, const double *q2)
+{
+    out[0] = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1];
+    out[1] = q1[3] * q2[1] + q1[1] * q2[3] + q1[2] * q2[0] - q1[0] * q2[2];
+    out[2] = q1[3] * q2[2] + q1[2] * q2[3] + q1[0] * q2[1] - q1[1] * q2[0];
+    out[3] = q1[3] * q2[3] - (q1[0] * q2[0] + q1[1] * q2[1] + q1[2] * q2[2]);
+}
+
+void ImOrient::QuatFromAxisAngle(double *out, const double *axis, double angle)
+{
+    double n = axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2];
+    if (fabs(n) > DBL_EPSILON)
+    {
+        double f = 0.5*angle;
+        out[3] = cos(f);
+        f = sin(f) / sqrt(n);
+        out[0] = axis[0] * f;
+        out[1] = axis[1] * f;
+        out[2] = axis[2] * f;
+    }
+    else
+    {
+        out[3] = 1.0;
+        out[0] = out[1] = out[2] = 0.0;
+    }
+}
+
+void ImOrient::Vec3Cross(double *out, const double *a, const double *b)
+{
+    out[0] = a[1] * b[2] - a[2] * b[1];
+    out[1] = a[2] * b[0] - a[0] * b[2];
+    out[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+double ImOrient::Vec3Dot(const double *a, const double *b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+void ImOrient::Vec3RotY(float *x, float *y, float *z)
+{
+    (void)y;
+    float tmp = *x;
+    *x = -*z;
+    *z = tmp;
+}
+
+void ImOrient::Vec3RotZ(float *x, float *y, float *z)
+{
+    (void)z;
+    float tmp = *x;
+    *x = -*y;
+    *y = tmp;
+}
+
+float ImOrient::QuatD(int w, int h)
+{
+    return (float)std::min(abs(w), abs(h)) - 4;
+}
+
+int ImOrient::QuatPX(float x, int w, int h)
+{
+    return (int)(x*0.5f*QuatD(w, h) + (float)w*0.5f + 0.5f);
+}
+
+int ImOrient::QuatPY(float y, int w, int h)
+{
+    return (int)(-y*0.5f*QuatD(w, h) + (float)h*0.5f - 0.5f);
+}
+
+float ImOrient::QuatIX(int x, int w, int h)
+{
+    return (2.0f*(float)x - (float)w - 1.0f) / QuatD(w, h);
+}
+
+float ImOrient::QuatIY(int y, int w, int h)
+{
+    return (-2.0f*(float)y + (float)h - 1.0f) / QuatD(w, h);
+}

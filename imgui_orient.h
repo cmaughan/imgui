@@ -3,6 +3,28 @@
 #include <float.h>
 #include <math.h>
 
+struct ImVec3
+{
+    float x, y, z;
+    ImVec3() { x = y = z = 0.0f; }
+    ImVec3(float _x, float _y, float _z) { x = _x; y = _y; z = _z; }
+
+#ifdef IM_VEC3_CLASS_EXTRA          // Define constructor and implicit cast operators in imconfig.h to convert back<>forth from your math types and ImVec2.
+    IM_VEC3_CLASS_EXTRA
+#endif
+};
+
+struct ImQuat
+{
+    float x, y, z, w;
+    ImQuat() { x = y = z = 0.0f; w = 1.0f; }
+    ImQuat(float _x, float _y, float _z, float _w) { x = _x; y = _y; z = _z; w = _w; }
+
+#ifdef IM_QUAT_CLASS_EXTRA          // Define constructor and implicit cast operators in imconfig.h to convert back<>forth from your math types and ImVec2.
+    IM_QUAT_CLASS_EXTRA
+#endif
+};
+
 // NOTE:
 // Ported from AntTweakBar
 // AntTweakBar doesn't have many useful math types, and ImGui doesn't either, so 
@@ -42,18 +64,18 @@ struct ImOrient
 
     // For the geometry
     enum EArrowParts { ARROW_CONE, ARROW_CONE_CAP, ARROW_CYL, ARROW_CYL_CAP };
-    static ImVector<float> s_SphTri;
+    static ImVector<ImVec3> s_SphTri;
     static ImVector<ImU32> s_SphCol;
-    static ImVector<int> s_SphTriProj;
+    static ImVector<ImVec2> s_SphTriProj;
     static ImVector<ImU32> s_SphColLight;
-    static ImVector<float> s_ArrowTri[4];
-    static ImVector<int> s_ArrowTriProj[4];
-    static ImVector<float> s_ArrowNorm[4];
+    static ImVector<ImVec3> s_ArrowTri[4];
+    static ImVector<ImVec2> s_ArrowTriProj[4];
+    static ImVector<ImVec3> s_ArrowNorm[4];
     static ImVector<ImU32> s_ArrowColLight[4];
     static void CreateSphere();
     static void CreateArrow();
 
-    IMGUI_API void DrawTriangles(ImDrawList* draw_list, ImVec2 offset, int* triProj, ImU32* colLight, int numVertices, float cullDir);
+    IMGUI_API void DrawTriangles(ImDrawList* draw_list, const ImVec2& offset, const ImVector<ImVec2>& triProj, const ImVector<ImU32>& colLight, int numVertices, float cullDir);
     IMGUI_API void ConvertToAxisAngle();
     IMGUI_API void ConvertFromAxisAngle();
     IMGUI_API void ApplyQuat(float *outX, float *outY, float *outZ, float x, float y, float z, float qx, float qy, float qz, float qs);
@@ -65,13 +87,11 @@ struct ImOrient
 
     inline double DegToRad(double degree) { return degree * (M_PI / 180.0); }
     inline double RadToDeg(double radian) { return radian * (180.0 / M_PI); }
-    inline ImVec2 Vec2Subtract(const ImVec2& left, const ImVec2& right) { return ImVec2(left.x - right.x, left.y - right.y); }
-    inline float Vec2Cross(const ImVec2& left, const ImVec2& right) { return (left.x * right.y) - (left.y * right.x); }
-    inline float QuatD(int w, int h) { return (float)std::min(abs(w), abs(h)) - 4; }
-    inline int QuatPX(float x, int w, int h) { return (int)(x*0.5f*QuatD(w, h) + (float)w*0.5f + 0.5f); }
-    inline int QuatPY(float y, int w, int h) { return (int)(-y*0.5f*QuatD(w, h) + (float)h*0.5f - 0.5f); }
-    inline float QuatIX(int x, int w, int h) { return (2.0f*(float)x - (float)w - 1.0f) / QuatD(w, h); }
-    inline float QuatIY(int y, int w, int h) { return (-2.0f*(float)y + (float)h - 1.0f) / QuatD(w, h); }
+    inline float QuatD(float w, float h) { return (float)std::min(abs(w), abs(h)) - 4.0f; }
+    inline float QuatPX(float x, float w, float h) { return (x*0.5f*QuatD(w, h) + w*0.5f + 0.5f); }
+    inline float QuatPY(float y, float w, float h) { return (-y*0.5f*QuatD(w, h) + h*0.5f - 0.5f); }
+    inline float QuatIX(int x, float w, float h) { return (2.0f*x - w - 1.0f) / QuatD(w, h); }
+    inline float QuatIY(int y, float w, float h) { return (-2.0f*y + h - 1.0f) / QuatD(w, h); }
 
     IMGUI_API static ImU32 ColorBlend(ImU32 _Color1, ImU32 _Color2, float _S);
     IMGUI_API static void QuatMult(double *out, const double *q1, const double *q2);
@@ -80,6 +100,9 @@ struct ImOrient
     IMGUI_API static double Vec3Dot(const double *a, const double *b);
     IMGUI_API static void Vec3RotY(float *x, float *y, float *z);
     IMGUI_API static void Vec3RotZ(float *x, float *y, float *z);
+
+    inline ImVec2 Vec2Subtract(const ImVec2& left, const ImVec2& right) { return ImVec2(left.x - right.x, left.y - right.y); }
+    inline float Vec2Cross(const ImVec2& left, const ImVec2& right) { return (left.x * right.y) - (left.y * right.x); }
 
     /*
     static void IMGUI_API CopyVarFromExtCB(void *_VarValue, const void *_ExtValue, unsigned int _ExtMemberIndex, void *_ClientData);

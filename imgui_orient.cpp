@@ -3,13 +3,13 @@
 #include "imgui_internal.h" // ImSaturate
 #include "imgui_orient.h"
 
-ImVector<float> ImOrient::s_SphTri;
+ImVector<ImVec3> ImOrient::s_SphTri;
 ImVector<ImU32> ImOrient::s_SphCol;
-ImVector<int>   ImOrient::s_SphTriProj;
+ImVector<ImVec2>   ImOrient::s_SphTriProj;
 ImVector<ImU32> ImOrient::s_SphColLight;
-ImVector<float> ImOrient::s_ArrowTri[4];
-ImVector<int>   ImOrient::s_ArrowTriProj[4];
-ImVector<float> ImOrient::s_ArrowNorm[4];
+ImVector<ImVec3> ImOrient::s_ArrowTri[4];
+ImVector<ImVec2>   ImOrient::s_ArrowTriProj[4];
+ImVector<ImVec3> ImOrient::s_ArrowNorm[4];
 ImVector<ImU32> ImOrient::s_ArrowColLight[4];
 
 bool ImOrient::Orient(char* label)
@@ -29,6 +29,7 @@ bool ImOrient::Orient(char* label)
 
     bool value_changed = false;
 
+    // Summary 
     if (m_AAMode)
     {
         ImGui::Text("V={%.2f,%.2f,%.2f} A=%.0f%c", Vx, Vy, Vz, Angle, 176);
@@ -43,6 +44,7 @@ bool ImOrient::Orient(char* label)
     }
 
     ImVec2 orient_pos = ImGui::GetCursorScreenPos();
+
     float sv_orient_size = ImGui::CalcItemWidth() / 3.0f;
     ImGui::InvisibleButton("orient", ImVec2(sv_orient_size, sv_orient_size));
 
@@ -96,11 +98,11 @@ bool ImOrient::Orient(char* label)
     double ez[3];
     Vec3Cross(ez, px, py);
 
-    bool AA = style.AntiAliasedShapes;
-    style.AntiAliasedShapes = false;
+    // Use the handedness of the frame matrix to determine cull direction (?)
     bool frameRightHanded = (ez[0] * pz[0] + ez[1] * pz[1] + ez[2] * pz[2] >= 0);
     float cullDir = frameRightHanded ? 1.0f : -1.0f;
 
+    // Drawing an arrow
     if (drawDir)
     {
         float dir[] = { (float)m_Dir[0], (float)m_Dir[1], (float)m_Dir[2] };
@@ -129,16 +131,13 @@ bool ImOrient::Orient(char* label)
             Permute(&x, &y, &z, kx, ky, kz);
             j = (z > 0) ? 3 - k : k;
 
-            assert(s_ArrowTriProj[j].size() == 2 * (s_ArrowTri[j].size() / 3) && s_ArrowColLight[j].size() == s_ArrowTri[j].size() / 3 && s_ArrowNorm[j].size() == s_ArrowTri[j].size());
-            const int ntri = (int)s_ArrowTri[j].size() / 3;
-            const float *tri = &(s_ArrowTri[j][0]);
-            const float *norm = &(s_ArrowNorm[j][0]);
-            int *triProj = &(s_ArrowTriProj[j][0]);
-            ImU32 *colLight = &(s_ArrowColLight[j][0]);
+            assert(s_ArrowTriProj[j].size() == (s_ArrowTri[j].size()) && s_ArrowColLight[j].size() == s_ArrowTri[j].size() && s_ArrowNorm[j].size() == s_ArrowTri[j].size());
+
+            const int ntri = (int)s_ArrowTri[j].size();
             for (i = 0; i < ntri; ++i)
             {
-                x = tri[3 * i + 0]; y = tri[3 * i + 1]; z = tri[3 * i + 2];
-                nx = norm[3 * i + 0]; ny = norm[3 * i + 1]; nz = norm[3 * i + 2];
+                x = s_ArrowTri[j][i].x; y = s_ArrowTri[j][i].y; z = s_ArrowTri[j][i].z;
+                nx = s_ArrowNorm[j][i].x; ny = s_ArrowNorm[j][i].y; nz = s_ArrowNorm[j][i].z;
                 if (x > 0)
                     x = 2.5f*x - 2.0f;
                 else
@@ -151,13 +150,11 @@ bool ImOrient::Orient(char* label)
                 ApplyQuat(&nx, &ny, &nz, nx, ny, nz, (float)rotDirQuat[0], (float)rotDirQuat[1], (float)rotDirQuat[2], (float)rotDirQuat[3]);
                 ApplyQuat(&nx, &ny, &nz, nx, ny, nz, qx, qy, qz, qs);
                 Permute(&nx, &ny, &nz, nx, ny, nz);
-                triProj[2 * i + 0] = QuatPX(x, int(w), int(h));
-                triProj[2 * i + 1] = QuatPY(y, int(w), int(h));
+                s_ArrowTriProj[j][i] = ImVec2(QuatPX(x, w, h), QuatPY(y, w, h));
                 ImU32 col = (m_DirColor | 0xff000000) & alpha;
-                colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f)));
+                s_ArrowColLight[j][i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f)));
             }
-
-            DrawTriangles(draw_list, inner_pos, triProj, colLight, ntri, cullDir);
+            DrawTriangles(draw_list, inner_pos, s_ArrowTriProj[j], s_ArrowColLight[j], ntri, cullDir);
         }
     }
     else
@@ -188,20 +185,16 @@ bool ImOrient::Orient(char* label)
                         else
                             cone = false;
                     }
-                    assert(ImOrient::s_ArrowTriProj[j].size() == 2 * (ImOrient::s_ArrowTri[j].size() / 3) && ImOrient::s_ArrowColLight[j].size() == ImOrient::s_ArrowTri[j].size() / 3 && ImOrient::s_ArrowNorm[j].size() == ImOrient::s_ArrowTri[j].size());
-                    const int ntri = (int)ImOrient::s_ArrowTri[j].size() / 3;
-                    const float *tri = &(ImOrient::s_ArrowTri[j][0]);
-                    const float *norm = &(ImOrient::s_ArrowNorm[j][0]);
-                    int *triProj = &(ImOrient::s_ArrowTriProj[j][0]);
-                    ImU32 *colLight = &(ImOrient::s_ArrowColLight[j][0]);
+                    assert(ImOrient::s_ArrowTriProj[j].size() == (ImOrient::s_ArrowTri[j].size()) && ImOrient::s_ArrowColLight[j].size() == ImOrient::s_ArrowTri[j].size() && ImOrient::s_ArrowNorm[j].size() == ImOrient::s_ArrowTri[j].size());
+                    const int ntri = (int)ImOrient::s_ArrowTri[j].size();
                     for (i = 0; i < ntri; ++i)
                     {
-                        x = tri[3 * i + 0]; y = tri[3 * i + 1]; z = tri[3 * i + 2];
+                        x = s_ArrowTri[j][i].x; y = s_ArrowTri[j][i].y; z = s_ArrowTri[j][i].z;
                         if (cone && x <= 0)
                             x = SPH_RADIUS;
                         else if (!cone && x > 0)
                             x = -SPH_RADIUS;
-                        nx = norm[3 * i + 0]; ny = norm[3 * i + 1]; nz = norm[3 * i + 2];
+                        nx = s_ArrowNorm[j][i].x; ny = s_ArrowNorm[j][i].y; nz = s_ArrowNorm[j][i].z;
                         if (l == 1)
                         {
                             Vec3RotZ(&x, &y, &z);
@@ -216,39 +209,32 @@ bool ImOrient::Orient(char* label)
                         Permute(&x, &y, &z, x, y, z);
                         ImOrient::ApplyQuat(&nx, &ny, &nz, nx, ny, nz, qx, qy, qz, qs);
                         Permute(&nx, &ny, &nz, nx, ny, nz);
-                        triProj[2 * i + 0] = QuatPX(x, int(inner_size), int(inner_size));
-                        triProj[2 * i + 1] = QuatPY(y, int(inner_size), int(inner_size));
+                        s_ArrowTriProj[j][i] = ImVec2(QuatPX(x, inner_size, inner_size), QuatPY(y, inner_size, inner_size));
                         float fade = (m == 0 && z < 0) ? TClamp(2.0f*z*z, 0.0f, 1.0f) : 0;
                         float alphaFade = 1.0f;
                         alphaFade = alpha.Value.w;
                         alphaFade *= (1.0f - fade);
                         ImColor alphaFadeCol(1.0f, 1.0f, 1.0f, alphaFade);
                         ImU32 col = (l == 0) ? 0xffff0000 : ((l == 1) ? 0xff00ff00 : 0xff0000ff);
-                        colLight[i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f))) & ImU32(alphaFadeCol);
+                        s_ArrowColLight[j][i] = ColorBlend(0xff000000, col, fabsf(TClamp(nz, -1.0f, 1.0f))) & ImU32(alphaFadeCol);
                     }
-
-                    DrawTriangles(draw_list, inner_pos, triProj, colLight, ntri, cullDir);
+                    DrawTriangles(draw_list, inner_pos, s_ArrowTriProj[j], s_ArrowColLight[j], ntri, cullDir);
                 }
             }
 
             if (m == 0)
             {
-                const float *tri = &(ImOrient::s_SphTri[0]);
-                int *triProj = &(ImOrient::s_SphTriProj[0]);
-                const ImU32 *col = &(ImOrient::s_SphCol[0]);
-                ImU32 *colLight = &(ImOrient::s_SphColLight[0]);
-                const int ntri = (int)ImOrient::s_SphTri.size() / 3;
+                const int ntri = (int)ImOrient::s_SphTri.size();
                 for (i = 0; i < ntri; ++i)   // draw sphere
                 {
-                    x = SPH_RADIUS*tri[3 * i + 0]; y = SPH_RADIUS*tri[3 * i + 1]; z = SPH_RADIUS*tri[3 * i + 2];
+                    x = SPH_RADIUS*s_SphTri[i].x; y = SPH_RADIUS*s_SphTri[i].y; z = SPH_RADIUS*s_SphTri[i].z;
                     ImOrient::ApplyQuat(&x, &y, &z, x, y, z, qx, qy, qz, qs);
                     Permute(&x, &y, &z, x, y, z);
-                    triProj[2 * i + 0] = QuatPX(x, int(inner_size), int(inner_size));
-                    triProj[2 * i + 1] = QuatPY(y, int(inner_size), int(inner_size));
-                    colLight[i] = ColorBlend(0xff000000, col[i], fabsf(TClamp(z / SPH_RADIUS, -1.0f, 1.0f)))& ImU32(alpha);
+                    s_SphTriProj[i] = ImVec2(QuatPX(x, inner_size, inner_size), QuatPY(y, inner_size, inner_size));
+                    s_SphColLight[i] = ColorBlend(0xff000000, s_SphCol[i], fabsf(TClamp(z / SPH_RADIUS, -1.0f, 1.0f)))& ImU32(alpha);
                 }
 
-                DrawTriangles(draw_list, inner_pos, triProj, colLight, ntri, cullDir);
+                DrawTriangles(draw_list, inner_pos, s_SphTriProj, s_SphColLight, ntri, cullDir);
             }
         }
 
@@ -267,20 +253,20 @@ bool ImOrient::Orient(char* label)
     ImGui::EndGroup();
     ImGui::PopID();
 
-
-    style.AntiAliasedShapes = AA;
     return value_changed;
 }
 
-void ImOrient::DrawTriangles(ImDrawList* draw_list, ImVec2 offset, int* triProj, ImU32* colLight, int numVertices, float cullDir)
+
+void ImOrient::DrawTriangles(ImDrawList* draw_list, const ImVec2& offset, const ImVector<ImVec2>& triProj, const ImVector<ImU32>& colLight, int numVertices, float cullDir)
 {
     const ImVec2 uv = GImGui->FontTexUvWhitePixel;
+    assert(numVertices % 3 == 0);
     draw_list->PrimReserve(numVertices, numVertices); // num vert/indices 
     for (int ii = 0; ii < numVertices / 3; ii++)
     {
-        ImVec2 v1 = offset + ImVec2(float(triProj[ii * 6 + 0]), float(triProj[ii * 6 + 1]));
-        ImVec2 v2 = offset + ImVec2(float(triProj[ii * 6 + 2]), float(triProj[ii * 6 + 3]));
-        ImVec2 v3 = offset + ImVec2(float(triProj[ii * 6 + 4]), float(triProj[ii * 6 + 5]));
+        ImVec2 v1 = offset + triProj[ii * 3];
+        ImVec2 v2 = offset + triProj[ii * 3 + 1];
+        ImVec2 v3 = offset + triProj[ii * 3 + 2];
 
         // 2D cross product to do culling
         ImVec2 d1 = Vec2Subtract(v2, v1);
@@ -300,7 +286,7 @@ void ImOrient::DrawTriangles(ImDrawList* draw_list, ImVec2 offset, int* triProj,
         draw_list->PrimWriteVtx(v3, uv, colLight[ii * 3 + 2]);
     }
 }
-            
+
 void ImOrient::CreateSphere()
 {
     const int SUBDIV = 7;
@@ -351,7 +337,7 @@ void ImOrient::CreateSphere()
                     z = (1.0f - u[l] - v[l])*za + u[l] * zb + v[l] * zc;
                     norm = sqrtf(x*x + y*y + z*z);
                     x /= norm; y /= norm; z /= norm;
-                    s_SphTri.push_back(x); s_SphTri.push_back(y); s_SphTri.push_back(z);
+                    s_SphTri.push_back(ImVec3(x, y, z));
                     if (u[l] + v[l] > FLT_EPSILON)
                         col = ColorBlend(COL_A[i], ColorBlend(COL_B[i], COL_C[i], v[l] / (u[l] + v[l])), u[l] + v[l]);
                     else
@@ -363,7 +349,7 @@ void ImOrient::CreateSphere()
             }
     }
     s_SphTriProj.clear();
-    s_SphTriProj.resize(2 * s_SphCol.size());
+    s_SphTriProj.resize(s_SphTri.size());
     s_SphColLight.clear();
     s_SphColLight.resize(s_SphCol.size());
 }
@@ -394,54 +380,54 @@ void ImOrient::CreateArrow()
         z0 = sinf(a0);
         y1 = cosf(a1);
         z1 = sinf(a1);
-        s_ArrowTri[ARROW_CYL].push_back(x1); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*y0); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*z0);
-        s_ArrowTri[ARROW_CYL].push_back(x0); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*y0); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*z0);
-        s_ArrowTri[ARROW_CYL].push_back(x0); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*y1); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*z1);
-        s_ArrowTri[ARROW_CYL].push_back(x1); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*y0); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*z0);
-        s_ArrowTri[ARROW_CYL].push_back(x0); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*y1); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*z1);
-        s_ArrowTri[ARROW_CYL].push_back(x1); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*y1); s_ArrowTri[ARROW_CYL].push_back(CYL_RADIUS*z1);
-        s_ArrowNorm[ARROW_CYL].push_back(0); s_ArrowNorm[ARROW_CYL].push_back(y0); s_ArrowNorm[ARROW_CYL].push_back(z0);
-        s_ArrowNorm[ARROW_CYL].push_back(0); s_ArrowNorm[ARROW_CYL].push_back(y0); s_ArrowNorm[ARROW_CYL].push_back(z0);
-        s_ArrowNorm[ARROW_CYL].push_back(0); s_ArrowNorm[ARROW_CYL].push_back(y1); s_ArrowNorm[ARROW_CYL].push_back(z1);
-        s_ArrowNorm[ARROW_CYL].push_back(0); s_ArrowNorm[ARROW_CYL].push_back(y0); s_ArrowNorm[ARROW_CYL].push_back(z0);
-        s_ArrowNorm[ARROW_CYL].push_back(0); s_ArrowNorm[ARROW_CYL].push_back(y1); s_ArrowNorm[ARROW_CYL].push_back(z1);
-        s_ArrowNorm[ARROW_CYL].push_back(0); s_ArrowNorm[ARROW_CYL].push_back(y1); s_ArrowNorm[ARROW_CYL].push_back(z1);
-        s_ArrowTri[ARROW_CYL_CAP].push_back(x0); s_ArrowTri[ARROW_CYL_CAP].push_back(0); s_ArrowTri[ARROW_CYL_CAP].push_back(0);
-        s_ArrowTri[ARROW_CYL_CAP].push_back(x0); s_ArrowTri[ARROW_CYL_CAP].push_back(CYL_RADIUS*y1); s_ArrowTri[ARROW_CYL_CAP].push_back(CYL_RADIUS*z1);
-        s_ArrowTri[ARROW_CYL_CAP].push_back(x0); s_ArrowTri[ARROW_CYL_CAP].push_back(CYL_RADIUS*y0); s_ArrowTri[ARROW_CYL_CAP].push_back(CYL_RADIUS*z0);
-        s_ArrowNorm[ARROW_CYL_CAP].push_back(-1); s_ArrowNorm[ARROW_CYL_CAP].push_back(0); s_ArrowNorm[ARROW_CYL_CAP].push_back(0);
-        s_ArrowNorm[ARROW_CYL_CAP].push_back(-1); s_ArrowNorm[ARROW_CYL_CAP].push_back(0); s_ArrowNorm[ARROW_CYL_CAP].push_back(0);
-        s_ArrowNorm[ARROW_CYL_CAP].push_back(-1); s_ArrowNorm[ARROW_CYL_CAP].push_back(0); s_ArrowNorm[ARROW_CYL_CAP].push_back(0);
+        s_ArrowTri[ARROW_CYL].push_back(ImVec3(x1, CYL_RADIUS*y0, CYL_RADIUS*z0));
+        s_ArrowTri[ARROW_CYL].push_back(ImVec3(x0, CYL_RADIUS*y0, CYL_RADIUS*z0));
+        s_ArrowTri[ARROW_CYL].push_back(ImVec3(x0, CYL_RADIUS*y1, CYL_RADIUS*z1));
+        s_ArrowTri[ARROW_CYL].push_back(ImVec3(x1, CYL_RADIUS*y0, CYL_RADIUS*z0));
+        s_ArrowTri[ARROW_CYL].push_back(ImVec3(x0, CYL_RADIUS*y1, CYL_RADIUS*z1));
+        s_ArrowTri[ARROW_CYL].push_back(ImVec3(x1, CYL_RADIUS*y1, CYL_RADIUS*z1));
+        s_ArrowNorm[ARROW_CYL].push_back(ImVec3(0, y0, z0));
+        s_ArrowNorm[ARROW_CYL].push_back(ImVec3(0, y0, z0));
+        s_ArrowNorm[ARROW_CYL].push_back(ImVec3(0, y1, z1));
+        s_ArrowNorm[ARROW_CYL].push_back(ImVec3(0, y0,z0));
+        s_ArrowNorm[ARROW_CYL].push_back(ImVec3(0, y1, z1));
+        s_ArrowNorm[ARROW_CYL].push_back(ImVec3(0, y1, z1));
+        s_ArrowTri[ARROW_CYL_CAP].push_back(ImVec3(x0, 0, 0));
+        s_ArrowTri[ARROW_CYL_CAP].push_back(ImVec3(x0, CYL_RADIUS*y1, CYL_RADIUS*z1));
+        s_ArrowTri[ARROW_CYL_CAP].push_back(ImVec3(x0, CYL_RADIUS*y0, CYL_RADIUS*z0));
+        s_ArrowNorm[ARROW_CYL_CAP].push_back(ImVec3(-1, 0, 0));
+        s_ArrowNorm[ARROW_CYL_CAP].push_back(ImVec3(-1, 0, 0));
+        s_ArrowNorm[ARROW_CYL_CAP].push_back(ImVec3(-1, 0, 0));
         x0 = ARROW_END - CONE_LENGTH;
         x1 = ARROW_END;
         nx = CONE_RADIUS / (x1 - x0);
         nn = 1.0f / sqrtf(nx*nx + 1);
-        s_ArrowTri[ARROW_CONE].push_back(x1); s_ArrowTri[ARROW_CONE].push_back(0); s_ArrowTri[ARROW_CONE].push_back(0);
-        s_ArrowTri[ARROW_CONE].push_back(x0); s_ArrowTri[ARROW_CONE].push_back(CONE_RADIUS*y0); s_ArrowTri[ARROW_CONE].push_back(CONE_RADIUS*z0);
-        s_ArrowTri[ARROW_CONE].push_back(x0); s_ArrowTri[ARROW_CONE].push_back(CONE_RADIUS*y1); s_ArrowTri[ARROW_CONE].push_back(CONE_RADIUS*z1);
-        s_ArrowTri[ARROW_CONE].push_back(x1); s_ArrowTri[ARROW_CONE].push_back(0); s_ArrowTri[ARROW_CONE].push_back(0);
-        s_ArrowTri[ARROW_CONE].push_back(x0); s_ArrowTri[ARROW_CONE].push_back(CONE_RADIUS*y1); s_ArrowTri[ARROW_CONE].push_back(CONE_RADIUS*z1);
-        s_ArrowTri[ARROW_CONE].push_back(x1); s_ArrowTri[ARROW_CONE].push_back(0); s_ArrowTri[ARROW_CONE].push_back(0);
-        s_ArrowNorm[ARROW_CONE].push_back(nn*nx); s_ArrowNorm[ARROW_CONE].push_back(nn*y0); s_ArrowNorm[ARROW_CONE].push_back(nn*z0);
-        s_ArrowNorm[ARROW_CONE].push_back(nn*nx); s_ArrowNorm[ARROW_CONE].push_back(nn*y0); s_ArrowNorm[ARROW_CONE].push_back(nn*z0);
-        s_ArrowNorm[ARROW_CONE].push_back(nn*nx); s_ArrowNorm[ARROW_CONE].push_back(nn*y1); s_ArrowNorm[ARROW_CONE].push_back(nn*z1);
-        s_ArrowNorm[ARROW_CONE].push_back(nn*nx); s_ArrowNorm[ARROW_CONE].push_back(nn*y0); s_ArrowNorm[ARROW_CONE].push_back(nn*z0);
-        s_ArrowNorm[ARROW_CONE].push_back(nn*nx); s_ArrowNorm[ARROW_CONE].push_back(nn*y1); s_ArrowNorm[ARROW_CONE].push_back(nn*z1);
-        s_ArrowNorm[ARROW_CONE].push_back(nn*nx); s_ArrowNorm[ARROW_CONE].push_back(nn*y1); s_ArrowNorm[ARROW_CONE].push_back(nn*z1);
-        s_ArrowTri[ARROW_CONE_CAP].push_back(x0); s_ArrowTri[ARROW_CONE_CAP].push_back(0); s_ArrowTri[ARROW_CONE_CAP].push_back(0);
-        s_ArrowTri[ARROW_CONE_CAP].push_back(x0); s_ArrowTri[ARROW_CONE_CAP].push_back(CONE_RADIUS*y1); s_ArrowTri[ARROW_CONE_CAP].push_back(CONE_RADIUS*z1);
-        s_ArrowTri[ARROW_CONE_CAP].push_back(x0); s_ArrowTri[ARROW_CONE_CAP].push_back(CONE_RADIUS*y0); s_ArrowTri[ARROW_CONE_CAP].push_back(CONE_RADIUS*z0);
-        s_ArrowNorm[ARROW_CONE_CAP].push_back(-1); s_ArrowNorm[ARROW_CONE_CAP].push_back(0); s_ArrowNorm[ARROW_CONE_CAP].push_back(0);
-        s_ArrowNorm[ARROW_CONE_CAP].push_back(-1); s_ArrowNorm[ARROW_CONE_CAP].push_back(0); s_ArrowNorm[ARROW_CONE_CAP].push_back(0);
-        s_ArrowNorm[ARROW_CONE_CAP].push_back(-1); s_ArrowNorm[ARROW_CONE_CAP].push_back(0); s_ArrowNorm[ARROW_CONE_CAP].push_back(0);
+        s_ArrowTri[ARROW_CONE].push_back(ImVec3(x1,0,0));
+        s_ArrowTri[ARROW_CONE].push_back(ImVec3(x0,CONE_RADIUS*y0,CONE_RADIUS*z0));
+        s_ArrowTri[ARROW_CONE].push_back(ImVec3(x0,CONE_RADIUS*y1,CONE_RADIUS*z1));
+        s_ArrowTri[ARROW_CONE].push_back(ImVec3(x1,0,0));
+        s_ArrowTri[ARROW_CONE].push_back(ImVec3(x0,CONE_RADIUS*y1,CONE_RADIUS*z1));
+        s_ArrowTri[ARROW_CONE].push_back(ImVec3(x1,0,0));
+        s_ArrowNorm[ARROW_CONE].push_back(ImVec3(nn*nx,nn*y0,nn*z0));
+        s_ArrowNorm[ARROW_CONE].push_back(ImVec3(nn*nx,nn*y0,nn*z0));
+        s_ArrowNorm[ARROW_CONE].push_back(ImVec3(nn*nx,nn*y1,nn*z1));
+        s_ArrowNorm[ARROW_CONE].push_back(ImVec3(nn*nx,nn*y0,nn*z0));
+        s_ArrowNorm[ARROW_CONE].push_back(ImVec3(nn*nx,nn*y1,nn*z1));
+        s_ArrowNorm[ARROW_CONE].push_back(ImVec3(nn*nx,nn*y1,nn*z1));
+        s_ArrowTri[ARROW_CONE_CAP].push_back(ImVec3(x0,0,0));
+        s_ArrowTri[ARROW_CONE_CAP].push_back(ImVec3(x0,CONE_RADIUS*y1,CONE_RADIUS*z1));
+        s_ArrowTri[ARROW_CONE_CAP].push_back(ImVec3(x0,CONE_RADIUS*y0,CONE_RADIUS*z0));
+        s_ArrowNorm[ARROW_CONE_CAP].push_back(ImVec3(-1,0,0));
+        s_ArrowNorm[ARROW_CONE_CAP].push_back(ImVec3(-1,0,0));
+        s_ArrowNorm[ARROW_CONE_CAP].push_back(ImVec3(-1,0,0));
     }
 
     for (i = 0; i < 4; ++i)
     {
         s_ArrowTriProj[i].clear();
-        s_ArrowTriProj[i].resize(2 * (s_ArrowTri[i].size() / 3));
+        s_ArrowTriProj[i].resize(s_ArrowTri[i].size());
         s_ArrowColLight[i].clear();
-        s_ArrowColLight[i].resize(s_ArrowTri[i].size() / 3);
+        s_ArrowColLight[i].resize(s_ArrowTri[i].size());
     }
 }
 
@@ -456,25 +442,25 @@ void ImOrient::Permute(float *outX, float *outY, float *outZ, float x, float y, 
 void ImOrient::PermuteInv(float *outX, float *outY, float *outZ, float x, float y, float z)
 {
     float px = x, py = y, pz = z;
-    *outX = m_Permute[0][0]*px + m_Permute[0][1]*py + m_Permute[0][2]*pz;
-    *outY = m_Permute[1][0]*px + m_Permute[1][1]*py + m_Permute[1][2]*pz;
-    *outZ = m_Permute[2][0]*px + m_Permute[2][1]*py + m_Permute[2][2]*pz;
+    *outX = m_Permute[0][0] * px + m_Permute[0][1] * py + m_Permute[0][2] * pz;
+    *outY = m_Permute[1][0] * px + m_Permute[1][1] * py + m_Permute[1][2] * pz;
+    *outZ = m_Permute[2][0] * px + m_Permute[2][1] * py + m_Permute[2][2] * pz;
 }
 
 void ImOrient::Permute(double *outX, double *outY, double *outZ, double x, double y, double z)
 {
     double px = x, py = y, pz = z;
-    *outX = m_Permute[0][0]*px + m_Permute[1][0]*py + m_Permute[2][0]*pz;
-    *outY = m_Permute[0][1]*px + m_Permute[1][1]*py + m_Permute[2][1]*pz;
-    *outZ = m_Permute[0][2]*px + m_Permute[1][2]*py + m_Permute[2][2]*pz;
+    *outX = m_Permute[0][0] * px + m_Permute[1][0] * py + m_Permute[2][0] * pz;
+    *outY = m_Permute[0][1] * px + m_Permute[1][1] * py + m_Permute[2][1] * pz;
+    *outZ = m_Permute[0][2] * px + m_Permute[1][2] * py + m_Permute[2][2] * pz;
 }
 
 void ImOrient::PermuteInv(double *outX, double *outY, double *outZ, double x, double y, double z)
 {
     double px = x, py = y, pz = z;
-    *outX = m_Permute[0][0]*px + m_Permute[0][1]*py + m_Permute[0][2]*pz;
-    *outY = m_Permute[1][0]*px + m_Permute[1][1]*py + m_Permute[1][2]*pz;
-    *outZ = m_Permute[2][0]*px + m_Permute[2][1]*py + m_Permute[2][2]*pz;
+    *outX = m_Permute[0][0] * px + m_Permute[0][1] * py + m_Permute[0][2] * pz;
+    *outY = m_Permute[1][0] * px + m_Permute[1][1] * py + m_Permute[1][2] * pz;
+    *outZ = m_Permute[2][0] * px + m_Permute[2][1] * py + m_Permute[2][2] * pz;
 }
 
 void ImOrient::ApplyQuat(float *outX, float *outY, float *outZ, float x, float y, float z, float qx, float qy, float qz, float qs)

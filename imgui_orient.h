@@ -104,26 +104,18 @@ inline float ImRadToDeg(float radian) { return radian * (180.0f / float(M_PI)); 
 // The data structure that holds the orientation among other things
 struct ImOrient
 {
-    IMGUI_API ImOrient();
-    IMGUI_API bool Orient(char* label);
+    ImQuat Qt;            // Quaternion value
 
-    ImQuat Qt;         // Quaternion value
-     
-    ImVec3 Axis;       // Axis and Angle
-    float Angle; 
-     
-    ImVec3 Dir;        // Dir value set when used as a direction
-     
+    ImVec3 Axis;          // Axis and Angle
+    float Angle;
+
+    ImVec3 Dir;           // Dir value set when used as a direction
     bool m_AAMode;        // Axis & angle mode
     bool m_IsDir;         // Mapped to a dir vector instead of a quat
-    float m_ShowDir[3];   // If not zero, display one direction vector
-
+    ImVec3 m_ShowDir;     // CM: Not sure what this is all about? 
     ImU32 m_DirColor;        // Direction vector color
-    ImMat3x3 AxisTransform;  // Transform to required axis frame
 
-    static ImQuat m_OrigQuat;
-    static ImVec2 m_Orig;
-    static ImVec2 m_Prev;
+    ImMat3x3 AxisTransform;  // Transform to required axis frame
 
     // For the geometry
     enum EArrowParts { ARROW_CONE, ARROW_CONE_CAP, ARROW_CYL, ARROW_CYL_CAP };
@@ -138,6 +130,7 @@ struct ImOrient
     static void CreateSphere();
     static void CreateArrow();
 
+    IMGUI_API bool Draw(const char* label);
     IMGUI_API void DrawTriangles(ImDrawList* draw_list, const ImVec2& offset, const ImVector<ImVec2>& triProj, const ImVector<ImU32>& colLight, int numVertices, float cullDir);
     IMGUI_API void ConvertToAxisAngle();
     IMGUI_API void ConvertFromAxisAngle();
@@ -161,6 +154,17 @@ struct ImOrient
     const ImU32 COLOR32_RED = 0xffff0000;     // Red 
     const ImU32 COLOR32_GREEN = 0xff00ff00;   // Green 
     const ImU32 COLOR32_BLUE = 0xff0000ff;    // Blue 
+
+    const int GIZMO_SIZE = 100;
 };
 
+// The API
+namespace ImGui
+{
+
+IMGUI_API bool QuaternionGizmo(const char* label, ImQuat& quat);
+IMGUI_API bool AxisAngleGizmo(const char* label, ImVec3& axis, float& angle);
+IMGUI_API bool DirectionGizmo(const char* label, ImVec3& dir);
+
+};
 

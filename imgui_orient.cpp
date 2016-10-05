@@ -12,10 +12,83 @@ ImVector<ImVec2>   ImOrient::s_ArrowTriProj[4];
 ImVector<ImVec3> ImOrient::s_ArrowNorm[4];
 ImVector<ImU32> ImOrient::s_ArrowColLight[4];
 
-ImQuat ImOrient::m_OrigQuat;
-ImVec2 ImOrient::m_Orig;
-ImVec2 ImOrient::m_Prev;
-bool ImOrient::Orient(char* label)
+namespace ImGui
+{
+IMGUI_API bool QuaternionGizmo(const char* label, ImQuat& quat)
+{
+    ImOrient orient;
+    orient.Qt = quat;
+    orient.Axis = ImVec3(1.0f, 0.0f, 0.0f);
+    orient.Angle = 0;
+    orient.Dir.x = orient.Dir.y = orient.Dir.z = 0;
+
+    orient.m_AAMode = false; // Axis & angle mode hidden
+    orient.m_IsDir = false;
+    orient.m_ShowDir = ImVec3(0.0f, 0.0f, 0.0f);
+    orient.m_DirColor = 0xff00ffff;
+    orient.ConvertToAxisAngle();
+
+    bool ret = orient.Draw(label);
+    if (ret)
+    {
+        quat = orient.Qt;
+    }
+    return ret;
+}
+
+IMGUI_API bool AxisAngleGizmo(const char* label, ImVec3& axis, float& angle)
+{
+    ImOrient orient;
+    orient.Qt = ImQuat();
+    orient.Axis = axis;
+    orient.Angle = angle;
+    orient.Dir = ImVec3(0.0f, 0.0f, 0.0f);
+
+    orient.m_AAMode = true; // Axis & angle mode hidden
+    orient.m_IsDir = true;
+    orient.m_ShowDir = ImVec3(0.0f, 0.0f, 0.0f);
+    orient.m_DirColor = 0xff00ffff;
+    orient.ConvertFromAxisAngle();
+
+    bool ret = orient.Draw(label);
+    if (ret)
+    {
+        orient.ConvertToAxisAngle();
+        axis = orient.Axis;
+        angle = orient.Angle;
+    }
+    return ret;
+}
+
+IMGUI_API bool DirectionGizmo(const char* label, ImVec3& dir)
+{
+    ImOrient orient;
+    orient.Qt = ImQuat();
+    orient.Dir = dir;
+    orient.Axis = ImVec3(1.0f, 0.0f, 0.0f);
+    orient.Angle = 0.0f;
+
+    orient.m_AAMode = false; // Axis & angle mode hidden
+    orient.m_IsDir = true;
+    orient.m_ShowDir = ImVec3(1.0f, 0.0f, 0.0f);
+    orient.m_DirColor = 0xffff0000;
+    orient.QuatFromDir(orient.Qt, dir);
+    orient.ConvertToAxisAngle();
+
+    bool ret = orient.Draw(label);
+    if (ret)
+    {
+        ImVec3 d = orient.Qt.Rotate(ImVec3(1, 0, 0));
+        d = d.Div(d.Length());
+        orient.Dir = d;
+        dir = orient.Dir;
+    }
+    return ret;
+}
+
+} // ImGui namespace
+
+bool ImOrient::Draw(const char* label)
 {
     //    ImGuiIO& io = ImGui::GetIO();
     ImGuiStyle& style = ImGui::GetStyle();
@@ -32,26 +105,31 @@ bool ImOrient::Orient(char* label)
 
     bool value_changed = false;
 
+    ImGui::Text(label);
     // Summary 
     if (m_AAMode)
     {
-        ImGui::Text("V={%.2f,%.2f,%.2f} A=%.0f%c", Axis.x, Axis.y, Axis.z, Angle, 176);
+        ImGui::Text("Axis={%.2f,%.2f,%.2f} Angle=%.0f%c", Axis.x, Axis.y, Axis.z, Angle, 176);
     }
     else if (m_IsDir)
     {
-        ImGui::Text("V={%.2f,%.2f,%.2f}", Dir.x, Dir.y, Dir.z);
+        ImGui::Text("Dir={%.2f,%.2f,%.2f}", Dir.x, Dir.y, Dir.z);
     }
     else
     {
-        ImGui::Text("Q={x:%.2f,y:%.2f,z:%.2f,s:%.2f}", Qt.x, Qt.y, Qt.z, Qt.w);
+        ImGui::Text("Quat={x:%.2f,y:%.2f,z:%.2f,s:%.2f}", Qt.x, Qt.y, Qt.z, Qt.w);
     }
 
     ImVec2 orient_pos = ImGui::GetCursorScreenPos();
 
-    float sv_orient_size = std::min(ImGui::CalcItemWidth(), 200.0f);
+    float sv_orient_size = std::min(ImGui::CalcItemWidth(), float(GIZMO_SIZE));
     float w = sv_orient_size;
     float h = sv_orient_size;
 
+    // We want to generate quaternion rotations relative to the quaternion in the 'down' press state.
+    // This gives us cleaner control over rotation (it feels better/more natural)
+    static ImQuat origQuat;
+    static ImVec3 coordOld;
     bool highlighted = false;
     ImGui::InvisibleButton("orient", ImVec2(sv_orient_size, sv_orient_size));
     if (ImGui::IsItemActive())
@@ -60,15 +138,15 @@ bool ImOrient::Orient(char* label)
         ImVec2 mouse = ImGui::GetMousePos() - orient_pos;
         if (ImGui::IsMouseClicked(0))
         {
-            m_OrigQuat = Qt;
-            m_Orig = ImVec2(QuatIX((int)mouse.x, w, h), QuatIY((int)mouse.y, w, h));
-            m_Prev = m_Orig;
+            origQuat = Qt;
+            coordOld = ImVec3(QuatIX((int)mouse.x, w, h), QuatIY((int)mouse.y, w, h), 1.0f);
         }
         else if (ImGui::IsMouseDragging(0))
         {
+            //ImGui::ResetMouseDragDelta(0);
             ImVec3 coord(QuatIX((int)mouse.x, w, h), QuatIY((int)mouse.y, w, h), 1.0f);
             ImVec3 pVec = AxisTransform.Transform(coord);
-            ImVec3 oVec = AxisTransform.Transform(ImVec3(m_Orig.x, m_Orig.y, 1.0f));
+            ImVec3 oVec = AxisTransform.Transform(coordOld);
             coord.z = 0.0f;
             float n0 = oVec.Length();
             float n1 = pVec.Length();
@@ -81,13 +159,13 @@ bool ImOrient::Orient(char* label)
                 float ca = v0.Dot(v1);
                 float angle = atan2(sa, ca);
                 if (coord.x*coord.x + coord.y*coord.y > 1.0)
-                    angle *= 1.0f + 2.f*(coord.Length() - 1.0f);
+                    angle *= 1.0f + 1.5f*(coord.Length() - 1.0f);
                 ImQuat qrot, qres, qorig;
                 QuatFromAxisAngle(qrot, axis, angle);
-                float nqorig = sqrt(m_OrigQuat.x * m_OrigQuat.x + m_OrigQuat.y * m_OrigQuat.y + m_OrigQuat.z * m_OrigQuat.z + m_OrigQuat.w * m_OrigQuat.w);
+                float nqorig = sqrt(origQuat.x * origQuat.x + origQuat.y * origQuat.y + origQuat.z * origQuat.z + origQuat.w * origQuat.w);
                 if (fabs(nqorig) > FLT_EPSILON * FLT_EPSILON)
                 {
-                    qorig = m_OrigQuat.Div(nqorig);
+                    qorig = origQuat.Div(nqorig);
                     qres = qrot.Mult(qorig);
                     Qt = qres;
                 }
@@ -95,9 +173,7 @@ bool ImOrient::Orient(char* label)
                 {
                     Qt = qrot;
                 }
-                m_OrigQuat = Qt;
-                m_Orig = ImVec2(QuatIX((int)mouse.x, w, h), QuatIY((int)mouse.y, w, h));
-                m_Prev = m_Orig;
+                //origQuat = Qt;
                 value_changed = true;
             }
         }
@@ -110,7 +186,7 @@ bool ImOrient::Orient(char* label)
     }
 
 
-    float normDir = sqrt(m_ShowDir[0] * m_ShowDir[0] + m_ShowDir[1] * m_ShowDir[1] + m_ShowDir[2] * m_ShowDir[2]);
+    float normDir = m_ShowDir.Length();
     bool drawDir = m_IsDir || (normDir > FLT_EPSILON);
 
     ImVec2 inner_pos = orient_pos;
@@ -160,7 +236,7 @@ bool ImOrient::Orient(char* label)
     // Drawing an arrow
     if (drawDir)
     {
-        ImVec3 dir;
+        ImVec3 dir = m_ShowDir;
         if (normDir < FLT_EPSILON)
         {
             normDir = 1;
@@ -495,20 +571,6 @@ void ImOrient::CreateArrow()
 }
 
 
-ImOrient::ImOrient()
-{
-    Qt.x = Qt.y = Qt.z = 0;
-    Qt.w = 1;
-    Axis.x = 1;
-    Axis.y = Axis.z = 0;
-    Angle = 0;
-    Dir.x = Dir.y = Dir.z = 0;
-    m_AAMode = false; // Axis & angle mode hidden
-    m_IsDir = false;
-    m_ShowDir[0] = m_ShowDir[1] = m_ShowDir[2] = 0;
-    m_DirColor = 0xff00ffff;
-    ConvertToAxisAngle();
-}
 
 void ImOrient::ConvertToAxisAngle()
 {

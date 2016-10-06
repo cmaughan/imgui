@@ -29,7 +29,7 @@ int PlotHistogramEx(const char* label,
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems) return -1;
 
-    ImGuiState& g = *GImGui;
+    ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
 
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
@@ -359,7 +359,7 @@ bool ListBox(const char* label,
 
 void BringToFront()
 {
-    ImGuiState& g = *GImGui;
+    ImGuiContext& g = *GImGui;
 
     ImGuiWindow* window = GImGui->CurrentWindow;
 
@@ -531,7 +531,7 @@ CurveEditor BeginCurveEditor(const char* label)
     ImGuiWindow* window = GetCurrentWindow();
     if (window->SkipItems) return editor;
 
-    ImGuiState& g = *GImGui;
+    ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     ImVec2 cursor_pos = GetCursorScreenPos();
 
@@ -578,7 +578,7 @@ void EndCurveEditor(const CurveEditor& editor)
 bool CurvePoint(ImVec2* points, CurveEditor& editor)
 {
     ImGuiWindow* window = GetCurrentWindow();
-    ImGuiState& g = *GImGui;
+    ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
 
     ImVec2 cursor_pos_backup = GetCursorScreenPos();
@@ -649,12 +649,12 @@ bool CurvePoint(ImVec2* points, CurveEditor& editor)
 
 bool BeginResizablePopup(const char* str_id, const ImVec2& size_on_first_use)
 {
-	if (GImGui->OpenedPopupStack.Size <= GImGui->CurrentPopupStack.Size)
+	if (GImGui->OpenPopupStack.Size <= GImGui->CurrentPopupStack.Size)
 	{
 		ClearSetNextWindowData();
 		return false;
 	}
-	ImGuiState& g = *GImGui;
+	ImGuiContext& g = *GImGui;
 	ImGuiWindow* window = g.CurrentWindow;
 	const ImGuiID id = window->GetID(str_id);
 	if (!IsPopupOpen(id))
@@ -691,7 +691,7 @@ void IntervalGraph(const unsigned long long* value_pairs,
 	ImGuiWindow* window = GetCurrentWindow();
 	if (window->SkipItems) return;
 
-	ImGuiState& g = *GImGui;
+	ImGuiContext& g = *GImGui;
 	const ImGuiStyle& style = g.Style;
 
 	ImVec2 graph_size(CalcItemWidth() + (style.FramePadding.x * 2), ImGui::GetTextLineHeight());

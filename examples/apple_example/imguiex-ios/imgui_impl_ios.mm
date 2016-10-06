@@ -191,7 +191,7 @@ uSynergyBool ImGui_ConnectFunc(uSynergyCookie cookie)
     // connect it to the address and port we passed in to getaddrinfo():
     int ret = connect(usynergy_sockfd, res->ai_addr, res->ai_addrlen);
     if (!ret) {
-        NSLog( @"Connect suceeded...");
+        NSLog( @"Connect succeeded...");
     } else {
         NSLog( @"Connect failed, %d", ret );
     }
@@ -263,10 +263,10 @@ void ImGui_KeyboardCallback(uSynergyCookie cookie, uint16_t key,
 //    printf("Synergy: keyboard callback: 0x%02X (%s)", scanCode, down?"true":"false");
     ImGuiIO& io = ImGui::GetIO();
     io.KeysDown[key] = down;
-    io.KeyShift = modifiers & USYNERGY_MODIFIER_SHIFT;
-    io.KeyCtrl = modifiers & USYNERGY_MODIFIER_CTRL;
-    io.KeyAlt = modifiers & USYNERGY_MODIFIER_ALT;
-    
+    io.KeyShift = (modifiers & USYNERGY_MODIFIER_SHIFT);
+    io.KeyCtrl = (modifiers & USYNERGY_MODIFIER_CTRL);
+    io.KeyAlt = (modifiers & USYNERGY_MODIFIER_ALT);
+    io.KeySuper = (modifiers & USYNERGY_MODIFIER_WIN);
     
     // Add this as keyboard input
     if ((down) && (key) && (scanCode<256) && !(modifiers & USYNERGY_MODIFIER_CTRL)) 
@@ -648,7 +648,7 @@ static void ImGui_ImplIOS_RenderDrawLists (ImDrawData *draw_data)
         ImDrawIdx* idx_buffer = &cmd_list->IdxBuffer.front();
         
         glBindBuffer(GL_ARRAY_BUFFER, g_VboHandle);
-        int needed_vtx_size = cmd_list->VtxBuffer.size() * sizeof(ImDrawVert);
+        const int needed_vtx_size = cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
         if (g_VboSize < needed_vtx_size)
         {
             // Grow our buffer if needed
@@ -659,11 +659,12 @@ static void ImGui_ImplIOS_RenderDrawLists (ImDrawData *draw_data)
         unsigned char* vtx_data = (unsigned char*)glMapBufferRange(GL_ARRAY_BUFFER, 0, needed_vtx_size, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
         if (!vtx_data)
             continue;
-        memcpy(vtx_data, &cmd_list->VtxBuffer[0], cmd_list->VtxBuffer.size() * sizeof(ImDrawVert));
+        memcpy(vtx_data, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
         glUnmapBuffer(GL_ARRAY_BUFFER);
         
-        for (const ImDrawCmd* pcmd = cmd_list->CmdBuffer.begin(); pcmd != cmd_list->CmdBuffer.end(); pcmd++)
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
+            const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
             if (pcmd->UserCallback)
             {
                 pcmd->UserCallback(cmd_list, pcmd);

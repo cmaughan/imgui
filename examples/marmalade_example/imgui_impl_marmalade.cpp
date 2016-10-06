@@ -40,9 +40,8 @@ void ImGui_Marmalade_RenderDrawLists(ImDrawData* draw_data)
     for(int n = 0; n < draw_data->CmdListsCount; n++)
     {
         const ImDrawList* cmd_list = draw_data->CmdLists[n];
-        const unsigned char* vtx_buffer = (const unsigned char*)&cmd_list->VtxBuffer.front();
-        const ImDrawIdx* idx_buffer = &cmd_list->IdxBuffer.front();
-        int nVert = cmd_list->VtxBuffer.size();
+        const ImDrawIdx* idx_buffer = cmd_list->IdxBuffer.Data;
+        const int nVert = cmd_list->VtxBuffer.Size;
         CIwFVec2* pVertStream = IW_GX_ALLOC(CIwFVec2, nVert);
         CIwFVec2* pUVStream = IW_GX_ALLOC(CIwFVec2, nVert);
         CIwColour* pColStream = IW_GX_ALLOC(CIwColour, nVert);
@@ -62,12 +61,12 @@ void ImGui_Marmalade_RenderDrawLists(ImDrawData* draw_data)
         IwGxSetColStream(pColStream, nVert);
         IwGxSetNormStream(0);
 
-        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.size(); cmd_i++)
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
         {
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
             if (pcmd->UserCallback)
             {
-                pcmd->UserCallback(cmd_list,pcmd);
+                pcmd->UserCallback(cmd_list, pcmd);
             }
             else
             {
@@ -153,6 +152,7 @@ int32 ImGui_Marmalade_KeyCallback(void* SystemData, void* userData)
     io.KeyCtrl = s3eKeyboardGetState(s3eKeyLeftControl) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightControl) == S3E_KEY_STATE_DOWN;
     io.KeyShift = s3eKeyboardGetState(s3eKeyLeftShift) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightShift) == S3E_KEY_STATE_DOWN;
     io.KeyAlt = s3eKeyboardGetState(s3eKeyLeftAlt) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightAlt) == S3E_KEY_STATE_DOWN;
+    io.KeySuper = s3eKeyboardGetState(s3eKeyLeftWindows) == S3E_KEY_STATE_DOWN || s3eKeyboardGetState(s3eKeyRightWindows) == S3E_KEY_STATE_DOWN;
 
     return 0;
 }

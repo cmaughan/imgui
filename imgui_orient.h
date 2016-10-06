@@ -3,13 +3,23 @@
 #include <float.h>
 #include <math.h>
 
+// ----------------------------
 // Notes from: www.github.com/cmaughan
 // Ported from AntTweakBar
-// Dependencies kept to a minimum.  I basically vectorized the code, added a few math types, cleaned things up and 
-// made it clearer what the maths was doing. 
-// I tried to make it more imgui-like, and removed all the excess stuff not needed here.
+// This is a really nice implementation of an orientation widget; all due respect to the original author ;) 
+// Dependencies kept to a minimum.  I basically vectorized the original code, added a few math types, cleaned things up and 
+// made it clearer what the maths was doing.
+// I tried to make it more imgui-like, and removed all the excess stuff not needed here.  This still needs work.
 // I also added triangle culling because ImGui doesn't support winding clip 
+// The widget works by transforming the 3D object to screen space and clipping the triangles.  This makes it work with any 
+// imgui back end, without modifications to the renderers.
+// 
+// TODO:
+// More cleanup.
+// Figure out what ShowDir is for.
+// Test direction vectors more
 
+// -------------------------- 
 // Firstly, a little math, missing from ImGui but needed for this widget 
 // A Vec3, Matrix 3x3, Dot & Cross products, A Quaternion.  Some helper functions, bare minimum
 struct ImVec3
@@ -155,7 +165,7 @@ struct ImOrient
     const ImU32 COLOR32_GREEN = 0xff00ff00;   // Green 
     const ImU32 COLOR32_BLUE = 0xff0000ff;    // Blue 
 
-    const int GIZMO_SIZE = 100;
+    const int GIZMO_SIZE = 200;
 };
 
 // The API

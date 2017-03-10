@@ -2033,6 +2033,10 @@ ImGuiContext* ImGui::GetCurrentContext()
 
 void ImGui::SetCurrentContext(ImGuiContext* ctx)
 {
+    if (ctx == nullptr)
+    {
+        ctx = &GImDefaultContext;
+    }
     GImGui = ctx;
 }
 
@@ -2052,7 +2056,7 @@ void ImGui::DestroyContext(ImGuiContext* ctx)
     ctx->~ImGuiContext();
     free_fn(ctx);
     if (GImGui == ctx)
-        GImGui = NULL;
+        GImGui = &GImDefaultContext;
 }
 
 ImGuiIO& ImGui::GetIO()

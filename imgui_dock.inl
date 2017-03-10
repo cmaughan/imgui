@@ -1,12 +1,53 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_PLACEMENT_NEW
 #include "imgui_internal.h"
-#include "MStringUtils.h"
+#include <vector>
+#include <cassert>
 
 namespace ImGui
 {
 
 
+// trim from beginning of string (left)
+inline std::string& LTrim(std::string& s, const char* t = " \t\n\r\f\v")
+{
+    s.erase(0, s.find_first_not_of(t));
+    return s;
+}
+
+// trim from end of string (right)
+inline std::string& RTrim(std::string& s, const char* t = " \t\n\r\f\v")
+{
+    s.erase(s.find_last_not_of(t) + 1);
+    return s;
+}
+// trim from both ends of string (left & right)
+inline std::string& Trim(std::string& s, const char* t = " \t\n\r\f\v")
+{
+    return LTrim(RTrim(s, t), t);
+}
+std::vector<std::string> MSplit(std::string s, const char delimiter)
+{
+    Trim(s);
+    size_t start = 0;
+    size_t end = s.find_first_of(delimiter);
+    
+    std::vector<std::string> output;
+    
+    while (end <= std::string::npos)
+    {
+        output.emplace_back(s.substr(start, end - start));
+        
+        if (end == std::string::npos)
+            break;
+        
+        start = end + 1;
+        end = s.find_first_of(delimiter, start);
+    }
+    
+    return output;
+}
+    
 struct DockContext
 {
     enum Slot_
@@ -490,7 +531,7 @@ struct DockContext
         canvas->PushClipRectFullScreen();
 
         ImU32 docked_color = GetColorU32(ImGuiCol_FrameBg);
-        docked_color = docked_color & 0x00ffFFFF | 0x80000000;
+        docked_color = (docked_color & 0x00ffFFFF) | 0x80000000;
         dock.pos = GetIO().MousePos - m_drag_offset;
         if (dest_dock)
         {

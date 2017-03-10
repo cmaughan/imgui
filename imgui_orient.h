@@ -2,6 +2,11 @@
 
 #include <float.h>
 #include <math.h>
+#include <algorithm>
+
+#ifndef M_PI
+#define M_PI 3.14159862f
+#endif
 
 // ----------------------------
 // Notes from: www.github.com/cmaughan
@@ -146,7 +151,7 @@ struct ImOrient
     IMGUI_API void ConvertFromAxisAngle();
 
     // Quaternions
-    inline float QuatD(float w, float h) { return (float)std::min(abs(w), abs(h)) - 4.0f; }
+    inline float QuatD(float w, float h) { return (float)std::min(std::abs(w), std::abs(h)) - 4.0f; }
     inline float QuatPX(float x, float w, float h) { return (x*0.5f*QuatD(w, h) + w*0.5f + 0.5f); }
     inline float QuatPY(float y, float w, float h) { return (-y*0.5f*QuatD(w, h) + h*0.5f - 0.5f); }
     inline float QuatIX(int x, float w, float h) { return (2.0f*x - w - 1.0f) / QuatD(w, h); }

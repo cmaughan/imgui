@@ -1,6 +1,6 @@
 #pragma once
 
-
+#include <sstream>
 namespace Lumix { namespace FS { class OsFile; } }
 
 

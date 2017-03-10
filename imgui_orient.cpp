@@ -3,6 +3,8 @@
 #include "imgui_internal.h" // ImSaturate
 #include "imgui_orient.h"
 
+#include <algorithm>
+#include <cassert>
 ImVector<ImVec3> ImOrient::s_SphTri;
 ImVector<ImU32> ImOrient::s_SphCol;
 ImVector<ImVec2>   ImOrient::s_SphTriProj;
@@ -11,7 +13,7 @@ ImVector<ImVec3> ImOrient::s_ArrowTri[4];
 ImVector<ImVec2>   ImOrient::s_ArrowTriProj[4];
 ImVector<ImVec3> ImOrient::s_ArrowNorm[4];
 ImVector<ImU32> ImOrient::s_ArrowColLight[4];
-
+ 
 namespace ImGui
 {
 IMGUI_API bool QuaternionGizmo(const char* label, ImQuat& quat)
@@ -105,7 +107,7 @@ bool ImOrient::Draw(const char* label)
 
     bool value_changed = false;
 
-    ImGui::Text(label);
+    ImGui::Text("%s", label);
     // Summary 
     if (m_AAMode)
     {
@@ -511,8 +513,8 @@ void ImOrient::CreateArrow()
     float x0, x1, y0, y1, z0, z1, a0, a1, nx, nn;
     for (i = 0; i < SUBDIV; ++i)
     {
-        a0 = 2.0f*glm::pi<float>()*(float(i)) / SUBDIV;
-        a1 = 2.0f*glm::pi<float>()*(float(i + 1)) / SUBDIV;
+        a0 = 2.0f*float(M_PI)*(float(i)) / SUBDIV;
+        a1 = 2.0f*float(M_PI)*(float(i + 1)) / SUBDIV;
         x0 = ARROW_BGN;
         x1 = ARROW_END - CONE_LENGTH;
         y0 = cosf(a0);

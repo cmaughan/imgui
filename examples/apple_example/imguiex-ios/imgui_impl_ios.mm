@@ -3,6 +3,9 @@
 // Providing a standalone iOS application with Synergy integration makes this sample more verbose than others. It also hasn't been tested as much.
 // Refer to other examples to get an easier understanding of how to integrate ImGui into your existing application.
 
+// TODO:
+// - Clipboard is not supported.
+
 #import <OpenGLES/ES3/gl.h>
 #import <OpenGLES/ES3/glext.h>
 
@@ -260,7 +263,7 @@ void ImGui_KeyboardCallback(uSynergyCookie cookie, uint16_t key,
                             uint16_t modifiers, uSynergyBool down, uSynergyBool repeat)
 {
     int scanCode = key-1;
-//    printf("Synergy: keyboard callback: 0x%02X (%s)", scanCode, down?"true":"false");
+    // printf("Synergy: keyboard callback: 0x%02X (%s)", scanCode, down?"true":"false");
     ImGuiIO& io = ImGui::GetIO();
     io.KeysDown[key] = down;
     io.KeyShift = (modifiers & USYNERGY_MODIFIER_SHIFT);
@@ -287,7 +290,6 @@ void ImGui_ClipboardCallback(uSynergyCookie cookie, enum uSynergyClipboardFormat
 {
     printf("Synergy: clipboard callback TODO\n" );
 }
-
 
 @interface ImGuiHelper ()
 {
@@ -486,8 +488,10 @@ void ImGui_ClipboardCallback(uSynergyCookie cookie, enum uSynergyClipboardFormat
     io.KeyMap[ImGuiKey_DownArrow] = kVK_DownArrow+1;
     io.KeyMap[ImGuiKey_Home] = kVK_Home+1;
     io.KeyMap[ImGuiKey_End] = kVK_End+1;
+    io.KeyMap[ImGuiKey_Insert] = kVK_Help+1;
     io.KeyMap[ImGuiKey_Delete] = kVK_ForwardDelete+1;
     io.KeyMap[ImGuiKey_Backspace] = kVK_Delete+1;
+    io.KeyMap[ImGuiKey_Space] = kVK_Space+1;
     io.KeyMap[ImGuiKey_Enter] = kVK_Return+1;
     io.KeyMap[ImGuiKey_Escape] = kVK_Escape+1;
     io.KeyMap[ImGuiKey_A] = kVK_ANSI_A+1;
@@ -584,9 +588,9 @@ void ImGui_ClipboardCallback(uSynergyCookie cookie, enum uSynergyClipboardFormat
             io.MouseDown[i] = g_MousePressed[i];
         }
 
-        // This is an arbitrary scaling factor that works for me. Not sure what units these
-        // mousewheel values from synergy are supposed to be in
+        // This is an arbitrary scaling factor that works for me. Not sure what units these mousewheel values from synergy are supposed to be in.
         io.MouseWheel = g_mouseWheelY / 500.0;
+        io.MouseWheelH = g_mouseWheelX / 500.0;
     }
     else
     {
@@ -615,6 +619,7 @@ void ImGui_ClipboardCallback(uSynergyCookie cookie, enum uSynergyClipboardFormat
 static void ImGui_ImplIOS_RenderDrawLists (ImDrawData *draw_data)
 {
     // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled
+	// FIXME: Backport changes from imgui_impl_glfw_gl3.cpp
     GLint last_program, last_texture;
     glGetIntegerv(GL_CURRENT_PROGRAM, &last_program);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
@@ -790,11 +795,10 @@ bool ImGui_ImplIOS_CreateDeviceObjects()
     glEnableVertexAttribArray(g_AttribLocationUV);
     glEnableVertexAttribArray(g_AttribLocationColor);
     
-#define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-    glVertexAttribPointer(g_AttribLocationPosition, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, pos));
-    glVertexAttribPointer(g_AttribLocationUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, uv));
-    glVertexAttribPointer(g_AttribLocationColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, col));
-#undef OFFSETOF
+    glVertexAttribPointer(g_AttribLocationPosition, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, pos));
+    glVertexAttribPointer(g_AttribLocationUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, uv));
+    glVertexAttribPointer(g_AttribLocationColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, col));
+
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     

@@ -1,11 +1,22 @@
 // ImGui - binary_to_compressed_c.cpp
-// Helper tool to turn a file into a C array.
-// The data is first compressed with stb_compress() to reduce source code size.
-// Then encoded in Base85 to fit in a string so we can fit roughly 4 bytes of compressed data into 5 bytes of source code (suggested by @mmalex)
-// (If we used 32-bits constants it would require take 11 bytes of source code to encode 4 bytes.)
-// Useful if you want to embed fonts into your code.
+// Helper tool to turn a file into a C array, if you want to embed font data in your source code.
+
+// The data is first compressed with stb_compress() to reduce source code size,
+// then encoded in Base85 to fit in a string so we can fit roughly 4 bytes of compressed data into 5 bytes of source code (suggested by @mmalex)
+// (If we used 32-bits constants it would require take 11 bytes of source code to encode 4 bytes, and be endianness dependent)
 // Note that even with compression, the output array is likely to be bigger than the binary file..
 // Load compressed TTF fonts with ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF()
+
+// Build with, e.g:
+//   # cl.exe binary_to_compressed_c.cpp
+//   # gcc binary_to_compressed_c.cpp
+// You can also find a precompiled Windows binary in the binary/demo package available from https://github.com/ocornut/imgui
+
+// Usage:
+//   binary_to_compressed_c.exe [-base85] [-nocompress] <inputfile> <symbolname>
+// Usage example:
+//   # binary_to_compressed_c.exe myfont.ttf MyFont > myfont.cpp
+//   # binary_to_compressed_c.exe -base85 myfont.ttf MyFont > myfont.cpp
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
@@ -42,8 +53,7 @@ int main(int argc, char** argv)
         }
     }
 
-    binary_to_compressed_c(argv[argn], argv[argn+1], use_base85_encoding, use_compression);
-    return 1;
+    return binary_to_compressed_c(argv[argn], argv[argn+1], use_base85_encoding, use_compression) ? 0 : 1;
 }
 
 char Encode85Byte(unsigned int x) 
@@ -173,17 +183,12 @@ static void stb__write(unsigned char v)
     ++stb__outbytes;
 }
 
-#define stb_out(v)    (stb__out ? *stb__out++ = (stb_uchar) (v) : stb__write((stb_uchar) (v)))
+//#define stb_out(v)    (stb__out ? *stb__out++ = (stb_uchar) (v) : stb__write((stb_uchar) (v)))
+#define stb_out(v)    do { if (stb__out) *stb__out++ = (stb_uchar) (v); else stb__write((stb_uchar) (v)); } while (0)
 
-static void stb_out2(stb_uint v)
-{
-    stb_out(v >> 8);
-    stb_out(v);
-}
-
+static void stb_out2(stb_uint v) { stb_out(v >> 8); stb_out(v); }
 static void stb_out3(stb_uint v) { stb_out(v >> 16); stb_out(v >> 8); stb_out(v); }
-static void stb_out4(stb_uint v) { stb_out(v >> 24); stb_out(v >> 16);
-stb_out(v >> 8 ); stb_out(v);                  }
+static void stb_out4(stb_uint v) { stb_out(v >> 24); stb_out(v >> 16); stb_out(v >> 8 ); stb_out(v); }
 
 static void outliterals(stb_uchar *in, int numlit)
 {

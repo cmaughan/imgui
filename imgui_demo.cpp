@@ -49,6 +49,7 @@ Index of this file:
 #endif
 
 #include "imgui.h"
+#include "imgui_orient.h"
 #include <ctype.h>          // toupper, isprint
 #include <limits.h>         // INT_MIN, INT_MAX
 #include <math.h>           // sqrtf, powf, cosf, sinf, floorf, ceilf
@@ -399,6 +400,19 @@ static void ShowDemoWindowWidgets()
 {
     if (!ImGui::CollapsingHeader("Widgets"))
         return;
+
+    if (ImGui::TreeNode("3D Widgets"))
+    {
+        static ImQuat qt;
+        ImGui::QuaternionGizmo("Rotation", qt);
+
+        static float angle = 0.0f;
+        static ImVec3 v(1.0f, 0.0f, 0.0f);
+        ImGui::AxisAngleGizmo("Angle/Axis", v, angle);
+
+        static ImVec3 dir(0.0f, 1.0f, 0.0f);
+        ImGui::DirectionGizmo("Direction", dir);
+    }
 
     if (ImGui::TreeNode("Basic"))
     {

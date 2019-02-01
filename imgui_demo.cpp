@@ -61,6 +61,10 @@ Index of this file:
 #include <stdint.h>         // intptr_t
 #endif
 
+#define ZEP_SINGLE_HEADER_BUILD
+#define ZEP_FEATURE_THREADS
+#include "zep/src/zep.h"
+
 #ifdef _MSC_VER
 #pragma warning (disable: 4996) // 'This function or variable may be unsafe': strcpy, strdup, sprintf, vsnprintf, sscanf, fopen
 #define vsnprintf _vsnprintf
@@ -172,6 +176,70 @@ static void ShowDemoWindowPopups();
 static void ShowDemoWindowColumns();
 static void ShowDemoWindowMisc();
 
+void ShowDemoZep(bool& open)
+{
+    using namespace Zep;
+
+    // A convenience wrapper so we can handle Notify - but we dont' have to do this!
+    struct ZepWrapper : IZepComponent
+    {
+        ZepWrapper()
+            : zepEditor(fs::path())
+        {
+            zepEditor.RegisterCallback(this);
+            zepEditor.GetEmptyBuffer("Test.cpp");
+        }
+        Zep::ZepEditor_ImGui zepEditor;
+
+        virtual ZepEditor& GetEditor() const override
+        {
+            return (ZepEditor&)zepEditor;
+        }
+
+        virtual void Notify(std::shared_ptr<ZepMessage> message) override
+        {
+            // Don't care for this demo, but can handle editor events such as buffer changes here
+            // or handle special editor commands, etc.
+            return;
+        }
+
+    };
+    static ZepWrapper zep;
+
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.13f, 0.1f, 0.12f, 0.95f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2.0f, 2.0f));
+
+    ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(1024, 768), ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Zep", &open, ImGuiWindowFlags_NoScrollbar))
+    {
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(1);
+        ImGui::End();
+        return;
+    }
+
+    // Fill the window
+    auto min = ImGui::GetCursorScreenPos();
+    auto max = ImGui::GetContentRegionAvail();
+    max.x = min.x + max.x;
+    max.y = min.y + max.y;
+
+    zep.zepEditor.SetDisplayRegion(NVec2f(min.x, min.y), NVec2f(max.x, max.y));
+    zep.zepEditor.Display();
+
+    if (ImGui::IsWindowFocused())
+    {
+        zep.zepEditor.HandleInput();
+    }
+    
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+    ImGui::PopStyleColor(1);
+}
+
 // Demonstrate most Dear ImGui features (this is big function!)
 // You may execute this function to experiment with the UI and understand what it does. You may then search for keywords in the code when you are interested by a specific feature.
 void ImGui::ShowDemoWindow(bool* p_open)
@@ -189,6 +257,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
     static bool show_app_simple_overlay = false;
     static bool show_app_window_titles = false;
     static bool show_app_custom_rendering = false;
+    static bool show_app_zep = true;
 
     if (show_app_documents)           ShowExampleAppDocuments(&show_app_documents);     // Process the Document app next, as it may also use a DockSpace()
     if (show_app_main_menu_bar)       ShowExampleAppMainMenuBar();
@@ -274,6 +343,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
             ImGui::MenuItem("Simple overlay", NULL, &show_app_simple_overlay);
             ImGui::MenuItem("Manipulating window titles", NULL, &show_app_window_titles);
             ImGui::MenuItem("Custom rendering", NULL, &show_app_custom_rendering);
+            ImGui::MenuItem("Zep", NULL, &show_app_zep);
             ImGui::MenuItem("Documents", NULL, &show_app_documents);
             ImGui::EndMenu();
         }
@@ -392,6 +462,9 @@ void ImGui::ShowDemoWindow(bool* p_open)
     ShowDemoWindowColumns();
     ShowDemoWindowMisc();
 
+    // Zep 
+    if (show_app_zep) ShowDemoZep(show_app_zep);
+
     // End of ShowDemoWindow()
     ImGui::End();
 }
@@ -412,6 +485,8 @@ static void ShowDemoWindowWidgets()
 
         static ImVec3 dir(0.0f, 1.0f, 0.0f);
         ImGui::DirectionGizmo("Direction", dir);
+
+        ImGui::TreePop();
     }
 
     if (ImGui::TreeNode("Basic"))

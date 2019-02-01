@@ -21,6 +21,12 @@ freely, subject to the following restrictions:
    distribution.
 */
 
+/*
+CM: Note: Modified from the original to support query of the threads available on the machine,
+and fallback to using single threaded if not possible.
+Original here: https://github.com/progschj/ThreadPool
+*/
+
 #ifndef THREAD_POOL_HPP
 #define THREAD_POOL_HPP
 
@@ -45,32 +51,33 @@ public:
     // the constructor just launches some amount of workers
     ThreadPool(size_t threads_n = std::thread::hardware_concurrency()) : stop(false)
     {
-        if(!threads_n)
-            throw std::invalid_argument("more than zero threads expected");
-
-        this->workers.reserve(threads_n);
-        for(; threads_n; --threads_n)
-            this->workers.emplace_back(
-                [this]
+        // If not enough threads, the pool will just execute all tasks immediately
+        if (threads_n > 1)
+        {
+            this->workers.reserve(threads_n);
+            for (; threads_n; --threads_n)
+                this->workers.emplace_back(
+                    [this]
+            {
+                while (true)
                 {
-                    while(true)
+                    std::function<void()> task;
+
                     {
-                        std::function<void()> task;
-
-                        {
-                            std::unique_lock<std::mutex> lock(this->queue_mutex);
-                            this->condition.wait(lock,
-                                [this]{ return this->stop || !this->tasks.empty(); });
-                            if(this->stop && this->tasks.empty())
-                                return;
-                            task = std::move(this->tasks.front());
-                            this->tasks.pop();
-                        }
-
-                        task();
+                        std::unique_lock<std::mutex> lock(this->queue_mutex);
+                        this->condition.wait(lock,
+                            [this] { return this->stop || !this->tasks.empty(); });
+                        if (this->stop && this->tasks.empty())
+                            return;
+                        task = std::move(this->tasks.front());
+                        this->tasks.pop();
                     }
+
+                    task();
                 }
+            }
             );
+        }
     }
     // deleted copy&move ctors&assignments
     ThreadPool(const ThreadPool&) = delete;
@@ -86,6 +93,13 @@ public:
         std::shared_ptr<packaged_task_t> task(new packaged_task_t(
                 std::bind(std::forward<F>(f), std::forward<Args>(args)...)
             ));
+
+        // If there are no works, just run the task in the main thread and return
+        if (workers.empty())
+        {
+            (*task)();
+            return task->get_future();
+        }
         auto res = task->get_future();
         {
             std::unique_lock<std::mutex> lock(this->queue_mutex);

@@ -176,6 +176,23 @@ static void ShowDemoWindowPopups();
 static void ShowDemoWindowColumns();
 static void ShowDemoWindowMisc();
 
+static auto zepText = R"R(
+// This is a simple demo of using Zep in an ImGui window.  To add this
+// to the standard ImGui test app, we just included the zep.h header and
+// added simple code to create and display the editor in an ImGui window.
+
+// Use the menu in this window to switch between Vim and Notepad style of editing.
+// In Vim Normal mode, try ":e path/to/foo.txt" to open a file, or ":tabedit" to add a tab,
+// and ":vsplit" to split within a tab
+
+// It is easy to create new tabs, splits, load files and extend zep.  
+
+void use_zep()
+{
+    const char* sentiment = "Good luck!";
+}
+
+)R";
 void ShowDemoZep(bool& open)
 {
     using namespace Zep;
@@ -187,7 +204,8 @@ void ShowDemoZep(bool& open)
             : zepEditor(fs::path())
         {
             zepEditor.RegisterCallback(this);
-            zepEditor.GetEmptyBuffer("Test.cpp");
+            auto pBuffer = zepEditor.GetFileBuffer("Test.cpp");
+            pBuffer->SetText(zepText);
         }
         Zep::ZepEditor_ImGui zepEditor;
 
@@ -213,12 +231,66 @@ void ShowDemoZep(bool& open)
     ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(1024, 768), ImGuiCond_FirstUseEver);
 
-    if (!ImGui::Begin("Zep", &open, ImGuiWindowFlags_NoScrollbar))
+    if (!ImGui::Begin("Zep", &open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar))
     {
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(1);
         ImGui::End();
         return;
+    }
+
+    // Simple menu options for switching mode and splitting
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Settings"))
+        {
+            if (ImGui::BeginMenu("Editor Mode"))
+            {
+                bool enabledVim = strcmp(zep.GetEditor().GetCurrentMode()->Name(), Zep::ZepMode_Vim::StaticName()) == 0;
+                bool enabledNormal = !enabledVim;
+                if (ImGui::MenuItem("Vim", "CTRL+2", &enabledVim))
+                {
+                    zep.GetEditor().SetMode(Zep::ZepMode_Vim::StaticName());
+                }
+                else if (ImGui::MenuItem("Standard", "CTRL+1", &enabledNormal))
+                {
+                    zep.GetEditor().SetMode(Zep::ZepMode_Standard::StaticName());
+                }
+                ImGui::EndMenu();
+            }
+
+            if (ImGui::BeginMenu("Theme"))
+            {
+                bool enabledDark = zep.GetEditor().GetTheme().GetThemeType() == ThemeType::Dark ? true : false;
+                bool enabledLight = !enabledDark;
+
+                if (ImGui::MenuItem("Dark", "", &enabledDark))
+                {
+                    zep.GetEditor().GetTheme().SetThemeType(ThemeType::Dark);
+                }
+                else if (ImGui::MenuItem("Light", "", &enabledLight))
+                {
+                    zep.GetEditor().GetTheme().SetThemeType(ThemeType::Light);
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Window"))
+        {
+            auto pTabWindow = zep.GetEditor().GetActiveTabWindow();
+            if (ImGui::MenuItem("Horizontal Split"))
+            {
+                pTabWindow->AddWindow(&pTabWindow->GetActiveWindow()->GetBuffer(), pTabWindow->GetActiveWindow(), false);
+            }
+            else if (ImGui::MenuItem("Vertical Split"))
+            {
+                pTabWindow->AddWindow(&pTabWindow->GetActiveWindow()->GetBuffer(), pTabWindow->GetActiveWindow(), true);
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
     }
 
     // Fill the window

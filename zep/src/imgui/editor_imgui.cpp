@@ -114,6 +114,10 @@ void ZepEditor_ImGui::HandleInput()
     }
     else if (io.KeyCtrl)
     {
+        // SDL Remaps to its own scancodes; and since we can't look them up in the standard IMGui list
+        // without modifying the ImGui base code, we have special handling here for CTRL.
+        // For the Win32 case, we get extended ASCII, which is handled below by filtering out < 31...
+#ifdef _SDL_H
         if (ImGui::IsKeyPressed(KEY_1))
         {
             SetMode(ZepMode_Standard::StaticName());
@@ -141,6 +145,7 @@ void ZepEditor_ImGui::HandleInput()
                 handled = true;
             }
         }
+#endif
     }
 
     if (!handled)
@@ -150,7 +155,19 @@ void ZepEditor_ImGui::HandleInput()
             // Ignore '\r' - sometimes ImGui generates it!
             if (io.InputQueueCharacters[n] == '\r')
                 continue;
-            GetCurrentMode()->AddKeyPress(io.InputQueueCharacters[n], mod);
+
+            // Here we need to translate CTRL+CHAR keys back to their correct state.  This is
+            // because in W32 mode, WM_CHAR will generate unique codes for these CTRL+ keys.
+            if (io.InputQueueCharacters[n] < 31 && io.KeyCtrl)
+            {
+                auto ch = io.InputQueueCharacters[n] + '@';
+                ch = ch + 'a' - 'A';
+                GetCurrentMode()->AddKeyPress(ch, mod);
+            }
+            else
+            {
+                GetCurrentMode()->AddKeyPress(io.InputQueueCharacters[n], mod);
+            }
         }
     }
 }

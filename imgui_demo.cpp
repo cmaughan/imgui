@@ -306,7 +306,14 @@ void ShowDemoZep(bool& open)
     {
         zep.zepEditor.HandleInput();
     }
-    
+
+    // Make the zep window focused on start of the demo - just so the user doesn't start typing without it;
+    // not sure why I need to do it twice; something else is stealing the focus the first time round
+    static int focus_count = 0;
+    if (focus_count++ < 2)
+    {
+        ImGui::SetWindowFocus();
+    }
     ImGui::End();
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(1);
@@ -363,7 +370,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
     static bool no_close = false;
     static bool no_nav = false;
     static bool no_background = false;
-    static bool no_bring_to_front = false;
+    static bool no_bring_to_front = true;
 
     ImGuiWindowFlags window_flags = 0;
     if (no_titlebar)        window_flags |= ImGuiWindowFlags_NoTitleBar;
@@ -380,6 +387,8 @@ void ImGui::ShowDemoWindow(bool* p_open)
     // We specify a default position/size in case there's no data in the .ini file. Typically this isn't required! We only do it to make the Demo applications a little more welcoming.
     ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(550, 680), ImGuiCond_FirstUseEver);
+
+    window_flags |= ImGuiWindowFlags_NoFocusOnAppearing;
 
     // Main body of the Demo window starts here.
     if (!ImGui::Begin("ImGui Demo", p_open, window_flags))
@@ -539,6 +548,7 @@ void ImGui::ShowDemoWindow(bool* p_open)
 
     // End of ShowDemoWindow()
     ImGui::End();
+
 }
 
 static void ShowDemoWindowWidgets()

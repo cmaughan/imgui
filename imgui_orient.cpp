@@ -159,12 +159,12 @@ bool ImOrient::Draw(const char* label)
                 ImVec3 axis = v0.Cross(v1);
                 float sa = axis.Length();
                 float ca = v0.Dot(v1);
-                float angle = atan2(sa, ca);
+                float angle = (float)atan2(sa, ca);
                 if (coord.x*coord.x + coord.y*coord.y > 1.0)
                     angle *= 1.0f + 1.5f*(coord.Length() - 1.0f);
                 ImQuat qrot, qres, qorig;
                 QuatFromAxisAngle(qrot, axis, angle);
-                float nqorig = sqrt(origQuat.x * origQuat.x + origQuat.y * origQuat.y + origQuat.z * origQuat.z + origQuat.w * origQuat.w);
+                float nqorig = (float)sqrt(origQuat.x * origQuat.x + origQuat.y * origQuat.y + origQuat.z * origQuat.z + origQuat.w * origQuat.w);
                 if (fabs(nqorig) > FLT_EPSILON * FLT_EPSILON)
                 {
                     qorig = origQuat.Div(nqorig);
@@ -252,7 +252,7 @@ bool ImOrient::Draw(const char* label)
             rotDirAxis.x = rotDirAxis.y = 0;
             rotDirAxis.z = 1;
         }
-        float rotDirAngle = acos(kVec.x / normDir);
+        float rotDirAngle = (float)acos(kVec.x / normDir);
         ImQuat rotDirQuat;
         QuatFromAxisAngle(rotDirQuat, rotDirAxis, rotDirAngle);
 
@@ -592,10 +592,10 @@ void ImOrient::ConvertToAxisAngle()
             a = 0.0f;
         else
         {
-            a = acos(Qt.w);
+            a = (float)acos(Qt.w);
             if (a*Angle < 0) // Preserve the sign of Angle
                 a = -a;
-            float f = 1.0f / sin(a);
+            float f = 1.0f / (float)sin(a);
             Axis.x = Qt.x * f;
             Axis.y = Qt.y * f;
             Axis.z = Qt.z * f;
@@ -615,8 +615,8 @@ void ImOrient::ConvertFromAxisAngle()
     if (fabs(n) > (FLT_EPSILON * FLT_EPSILON))
     {
         float f = 0.5f*ImDegToRad(Angle);
-        Qt.w = cos(f);
-        f = sin(f);
+        Qt.w = (float)cos(f);
+        f = (float)sin(f);
 
         Qt.x = Axis.x * f;
         Qt.y = Axis.y * f;
@@ -715,8 +715,8 @@ void ImOrient::QuatFromAxisAngle(ImQuat& out, const ImVec3& axis, float angle)
     if (fabs(n) > FLT_EPSILON)
     {
         float f = 0.5f*angle;
-        out.w = cos(f);
-        f = sin(f) / sqrt(n);
+        out.w = (float)cos(f);
+        f = (float)(sin(f) / sqrt(n));
         out.x = axis.x * f;
         out.y = axis.y * f;
         out.z = axis.z * f;
@@ -731,7 +731,7 @@ void ImOrient::QuatFromAxisAngle(ImQuat& out, const ImVec3& axis, float angle)
 void ImOrient::QuatFromDir(ImQuat& out, const ImVec3& dir)
 {
     // compute a quaternion that rotates (1,0,0) to (dx,dy,dz)
-    float dn = sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+    float dn = (float)sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
     if (dn < FLT_EPSILON * FLT_EPSILON)
     {
         out.x = out.y = out.z = 0;
@@ -745,7 +745,7 @@ void ImOrient::QuatFromDir(ImQuat& out, const ImVec3& dir)
             rotAxis.x = rotAxis.y = 0;
             rotAxis.z = 1;
         }
-        float rotAngle = acos(dir.x / dn);
+        float rotAngle = (float)acos(dir.x / dn);
         ImQuat rotQuat;
         QuatFromAxisAngle(rotQuat, rotAxis, rotAngle);
         out.x = rotQuat.x;

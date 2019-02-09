@@ -39,7 +39,7 @@ struct ImVec3
     float Dot(const ImVec3& b) const { return x * b.x + y * b.y + z * b.z; }
     ImVec3 Mult(float val) const { return ImVec3(x * val, y * val, z * val); }
     ImVec3 Div(float val) const { return ImVec3(x / val, y / val, z / val); }
-    float Length() const { return sqrt(x * x + y * y + z * z); }
+    float Length() const { return (float)sqrt(x * x + y * y + z * z); }
 #ifdef IM_VEC3_CLASS_EXTRA          // Define constructor and implicit cast operators in imconfig.h to convert back<>forth from your math types and ImVec2.
     IM_VEC3_CLASS_EXTRA
 #endif

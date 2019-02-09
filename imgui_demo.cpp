@@ -63,6 +63,7 @@ Index of this file:
 
 #define ZEP_SINGLE_HEADER_BUILD
 #define ZEP_FEATURE_THREADS
+#define ZEP_FEATURE_CPP_FILE_SYSTEM
 #include "zep/src/zep.h"
 
 #ifdef _MSC_VER
@@ -201,7 +202,7 @@ void ShowDemoZep(bool& open)
     struct ZepWrapper : IZepComponent
     {
         ZepWrapper()
-            : zepEditor(fs::path())
+            : zepEditor(ZepPath())
         {
             zepEditor.RegisterCallback(this);
             auto pBuffer = zepEditor.GetFileBuffer("Test.cpp");

@@ -182,11 +182,17 @@ static auto zepText = R"R(
 // to the standard ImGui test app, we just included the zep.h header and
 // added simple code to create and display the editor in an ImGui window.
 
-// Use the menu in this window to switch between Vim and Notepad style of editing.
-// In Vim Normal mode, try ":e path/to/foo.txt" to open a file, or ":tabedit" to add a tab,
-// and ":vsplit" to split within a tab
+// Use the menu in this window to switch between Vim and Notepad style of
+// editing.  In Vim Normal mode, try ":e path/to/foo.txt" to open a file,
+// or ":tabedit" to add a tab and ":vsplit" to split within a tab.
+// 
+// Or you can try CTRL+p and start typing a fuzzy searched file name from
+// this repository (is instant on release build), followed by ENTER to
+// open it, or CTRL+v to open it in a split or CTRL+t to open it in a tab!
 
-// It is easy to create new tabs, splits, load files and extend zep.  
+// It is easy to create new tabs, splits, load files and extend zep.
+// Zep even has an abstract file system so that you can provide only the
+// files in your game's asset tree, or in a compressed zip file, etc.
 
 void use_zep()
 {
@@ -300,6 +306,7 @@ void ShowDemoZep(bool& open)
     max.x = min.x + max.x;
     max.y = min.y + max.y;
 
+    zep.zepEditor.RefreshRequired();        // Currently required once per frame
     zep.zepEditor.SetDisplayRegion(NVec2f(min.x, min.y), NVec2f(max.x, max.y));
     zep.zepEditor.Display();
 

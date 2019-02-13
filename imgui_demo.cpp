@@ -303,6 +303,10 @@ void ShowDemoZep(bool& open)
     // Fill the window
     auto min = ImGui::GetCursorScreenPos();
     auto max = ImGui::GetContentRegionAvail();
+
+    // 'hide' the window contents from ImGui, so it doesn't try dragging when we move our scrollbar, etc.
+    ImGui::BeginChild("ZepContainer", max, false, ImGuiWindowFlags_NoMove);
+
     max.x = min.x + max.x;
     max.y = min.y + max.y;
 
@@ -322,6 +326,7 @@ void ShowDemoZep(bool& open)
     {
         ImGui::SetWindowFocus();
     }
+    ImGui::EndChild();
     ImGui::End();
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(1);

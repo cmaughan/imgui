@@ -49,7 +49,7 @@ class ZepTabWindow;
 class ZepWindow;
 class ZepTheme;
 
-class IZepDisplay;
+class ZepDisplay;
 class IZepFileSystem;
 
 struct Region;
@@ -180,7 +180,7 @@ class ZepEditor
 {
 public:
     // Root path is the path to search for a config file
-    ZepEditor(IZepDisplay* pDisplay, const ZepPath& root, uint32_t flags = 0, IZepFileSystem* pFileSystem = nullptr);
+    ZepEditor(ZepDisplay* pDisplay, const ZepPath& root, uint32_t flags = 0, IZepFileSystem* pFileSystem = nullptr);
     ~ZepEditor();
 
     void LoadConfig(const ZepPath& config_path);
@@ -189,6 +189,10 @@ public:
     void InitWithFileOrDir(const std::string& str);
 
     ZepMode* GetCurrentMode() const;
+    void BeginSecondaryMode(std::shared_ptr<ZepMode> spSecondaryMode);
+    void EndSecondaryMode();
+    ZepMode* GetSecondaryMode() const;
+
     void Display();
 
     void RegisterMode(std::shared_ptr<ZepMode> spMode);
@@ -255,7 +259,7 @@ public:
     void SetDisplayRegion(const NVec2f& topLeft, const NVec2f& bottomRight);
     void UpdateSize();
 
-    IZepDisplay& GetDisplay() const
+    ZepDisplay& GetDisplay() const
     {
         return *m_pDisplay;
     }
@@ -293,7 +297,7 @@ private:
     ZepBuffer* CreateNewBuffer(const std::string& bufferName);
 
 private:
-    IZepDisplay* m_pDisplay;
+    ZepDisplay* m_pDisplay;
     IZepFileSystem* m_pFileSystem;
 
     std::set<IZepComponent*> m_notifyClients;
@@ -311,6 +315,7 @@ private:
 
     // Active mode
     ZepMode* m_pCurrentMode = nullptr;
+    std::shared_ptr<ZepMode> m_spSecondaryMode;
 
     // Tab windows
     tTabWindows m_tabWindows;

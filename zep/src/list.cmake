@@ -21,6 +21,7 @@ ${ZEP_ROOT}/src/buffer.cpp
 ${ZEP_ROOT}/src/buffer.h
 ${ZEP_ROOT}/src/commands.cpp
 ${ZEP_ROOT}/src/commands.h
+${ZEP_ROOT}/src/display.cpp
 ${ZEP_ROOT}/src/display.h
 ${ZEP_ROOT}/src/tab_window.cpp
 ${ZEP_ROOT}/src/tab_window.h
@@ -40,6 +41,8 @@ ${ZEP_ROOT}/src/mode_standard.cpp
 ${ZEP_ROOT}/src/mode_standard.h
 ${ZEP_ROOT}/src/mode_vim.cpp
 ${ZEP_ROOT}/src/mode_vim.h
+${ZEP_ROOT}/src/mode_search.cpp
+${ZEP_ROOT}/src/mode_search.h
 ${ZEP_ROOT}/src/theme.cpp
 ${ZEP_ROOT}/src/theme.h
 ${ZEP_ROOT}/src/list.cmake

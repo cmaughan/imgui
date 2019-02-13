@@ -10,7 +10,7 @@ namespace Zep
 {
 
 class ZepTabWindow;
-class IZepDisplay;
+class ZepDisplay;
 class Scroller;
 
 struct Region;
@@ -49,7 +49,8 @@ enum class CursorType
     Hidden,
     Normal,
     Insert,
-    Visual
+    Visual,
+    LineMarker
 };
 
 enum class DisplayMode
@@ -138,12 +139,10 @@ public:
     NVec2i BufferToDisplay();
     NVec2i BufferToDisplay(const BufferLocation& location);
 
-    NVec2f GetTextSize(const utf8* pCh, const utf8* pEnd);
-
     float ToWindowY(float pos) const;
 
     bool IsActiveWindow() const;
-    NVec4f FilterActiveColor(const NVec4f& col);
+    NVec4f FilterActiveColor(const NVec4f& col, float atten = 1.0f);
 
 private:
     struct WindowPass
@@ -169,7 +168,6 @@ private:
     void DisplayToolTip(const NVec2f& pos, const RangeMarker& marker) const;
     bool DisplayLine(const SpanInfo& lineInfo, int displayPass);
     void DisplayScrollers();
-    void BuildCharCache();
     void DisableToolTipTillMove();
 
 private:
@@ -214,9 +212,6 @@ private:
     bool m_cursorMoved = true;
 
     std::shared_ptr<Scroller> m_vScroller;
-    NVec2f m_charCache[256];
-    bool m_charCacheDirty = true;
-    
     timer m_toolTipTimer;                   // Timer for when the tip is shown
     NVec2f m_tipStartPos;                   // Current location for the tip
     NVec2f m_lastTipQueryPos;               // last query location for the tip

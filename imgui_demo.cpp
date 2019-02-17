@@ -211,8 +211,7 @@ void ShowDemoZep(bool& open)
             : zepEditor(ZepPath())
         {
             zepEditor.RegisterCallback(this);
-            auto pBuffer = zepEditor.GetFileBuffer("Test.cpp");
-            pBuffer->SetText(zepText);
+            zepEditor.InitWithText("Test.cpp", zepText);
         }
         Zep::ZepEditor_ImGui zepEditor;
 

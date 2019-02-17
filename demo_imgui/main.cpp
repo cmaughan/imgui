@@ -140,13 +140,9 @@ struct ZepContainer : public IZepComponent
         {
             spEditor->InitWithFileOrDir(startupFilePath);
         }
-
-        // Add a shader, as a default when no file - for the demo
-        if (spEditor->GetBuffers().size() == 0)
+        else
         {
-            ZepBuffer* pBuffer = spEditor->GetEmptyBuffer("shader.vert");
-            pBuffer->SetText(shader.c_str());
-
+            spEditor->InitWithText("Shader.vert", shader);
         }
     }
 
@@ -443,6 +439,9 @@ int main(int argc, char** argv)
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::Begin("Zep", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar /*| ImGuiWindowFlags_NoScrollbar*/);
         ImGui::PopStyleVar(4);
+
+        // 'hide' the window contents from ImGui, so it doesn't try dragging when we move our scrollbar, etc.
+        ImGui::InvisibleButton("ZepContainer", ImGui::GetWindowSize());
 
         // TODO: Change only when necessray
         zep.spEditor->SetDisplayRegion(toNVec2f(ImGui::GetWindowPos()), toNVec2f(ImGui::GetWindowSize()));
